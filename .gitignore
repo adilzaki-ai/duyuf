@@ -1,0 +1,12 @@
+# keys and local settings
+.local-key
+.env.local
+*.env.local
+# python
+backend/.venv/
+__pycache__/
+.pytest_cache/
+# web
+frontend/node_modules/
+frontend/dist/
+.DS_Store

@@ -1,0 +1,87 @@
+/*
+ * Deep green and Madinah sand, with gold for what needs attention.
+ * Tokens only here; components read them.
+ */
+:root {
+  color-scheme: light;
+  --bg: #f6f2ea;
+  --surface: #ffffff;
+  --surface-2: #fbf8f2;
+  --ink: #1c2a25;
+  --ink-2: #55625d;
+  --line: #e4ddcf;
+  --brand: #0f5c4a;
+  --brand-2: #17775f;
+  --on-brand: #f4efe3;
+  --gold: #c9a04a;
+  --gold-soft: #f3e6c4;
+  --danger: #b3412f;
+
+  /* the journey, left to right */
+  --st-registered: #9aa59f;
+  --st-visa_issued: #c9a04a;
+  --st-arrived: #3b82a6;
+  --st-in_makkah: #0f5c4a;
+  --st-in_madinah: #2f9a6f;
+  --st-departed: #7b6f8f;
+
+  font-family: "Inter", "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0f1614;
+    --surface: #16201d;
+    --surface-2: #1b2723;
+    --ink: #e8e4da;
+    --ink-2: #a3ada8;
+    --line: #2a3632;
+    --brand: #0c3f33;
+    --on-brand: #efe9da;
+    --gold-soft: #3d331c;
+  }
+}
+
+[dir="rtl"] {
+  font-family: "IBM Plex Sans Arabic", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+a {
+  color: var(--brand-2);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+.boot {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--ink-2);
+}

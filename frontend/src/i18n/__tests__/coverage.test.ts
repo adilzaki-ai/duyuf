@@ -1,0 +1,25 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+import { AR } from "../ar";
+
+function sources(dir: string): string[] {
+  return readdirSync(dir).flatMap((f) => {
+    const p = join(dir, f);
+    if (statSync(p).isDirectory()) return f === "__tests__" ? [] : sources(p);
+    return /\.tsx?$/.test(f) ? [p] : [];
+  });
+}
+
+describe("Arabic", () => {
+  it("has every string the screens pass to t()", () => {
+    const missing = new Set<string>();
+    for (const file of sources(resolve(__dirname, "../.."))) {
+      for (const m of readFileSync(file, "utf8").matchAll(/\bt\(\s*"([^"]+)"/g)) if (!(m[1] in AR)) missing.add(m[1]);
+    }
+    /* labels.ts and the overview pass English through a table; check those too */
+    for (const en of ["Registered", "Visa issued", "In Makkah", "Wheelchair", "Minor alone", "Hajj", "Umrah", "Groups"])
+      if (!(en in AR)) missing.add(en);
+    expect([...missing]).toEqual([]);
+  });
+});
