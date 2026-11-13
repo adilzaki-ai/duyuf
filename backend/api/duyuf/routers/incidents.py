@@ -1,8 +1,9 @@
 """Incidents: something has happened to a pilgrim or a group, and someone is on it.
 
-Raised by anyone on the operator's staff, given to a team, resolved. Every step
-lands in the incident's history with who took it and when, which is also how
-"time to help" is measured. Nothing is deleted: a false alarm is resolved
+Raised by anyone on the operator's staff, or by a pilgrim on Rafeeq
+(routers/rafeeq.py), given to a team, resolved. Every step lands in the
+incident's history with who took it and when, which is also how "time to help"
+is measured. Nothing is deleted: a false alarm is resolved
 with that said.
 """
 from __future__ import annotations
@@ -21,7 +22,8 @@ router = APIRouter(prefix="/v1/incidents", tags=["incidents"])
 _COLS = """i.id::text, i.ref, i.kind, i.priority, i.status, i.pilgrim_id::text, p.full_name AS pilgrim_name,
            p.full_name_ar AS pilgrim_name_ar, i.group_id::text, g.code AS group_code, g.name AS group_name,
            g.leader_phone, i.location, i.description, i.team, i.resolution, i.reported_by,
-           i.opened_at, i.assigned_at, i.resolved_at, i.updated_at"""
+           i.opened_at, i.assigned_at, i.resolved_at, i.updated_at,
+           (i.rafeeq_card_id IS NOT NULL) AS from_rafeeq, i.pilgrim_ok_at"""
 _FROM = """incident i LEFT JOIN pilgrim p ON p.id = i.pilgrim_id
            LEFT JOIN pilgrim_group g ON g.id = i.group_id"""
 # Still to deal with first, the most pressing first, the longest waiting first.

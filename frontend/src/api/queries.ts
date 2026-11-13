@@ -17,6 +17,7 @@ import type {
   PilgrimFilter,
   WhatIf,
 } from "../domain/types";
+import type { RafeeqLang } from "../rafeeq/help";
 
 export function useOverview() {
   const { source } = useSession();
@@ -262,5 +263,32 @@ export function useUpdateStaff() {
   return useMutation({
     mutationFn: (v: { id: string; change: StaffChange }) => source.updateStaff(v.id, v.change),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["staff"] }),
+  });
+}
+
+/* ---- Rafeeq cards ---- */
+
+export function useRafeeqCard(pilgrimId: string) {
+  const { source } = useSession();
+  return useQuery({ queryKey: ["rafeeq-card", pilgrimId], queryFn: () => source.rafeeqCard(pilgrimId) });
+}
+
+/** make (a new card, which stops the old) or stop: one pilgrim's card. */
+export function useRafeeqCardStep(pilgrimId: string) {
+  const { source } = useSession();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { action: "make"; language: RafeeqLang } | { action: "stop" }) =>
+      v.action === "make" ? source.issueRafeeqCard(pilgrimId, v.language) : source.stopRafeeqCard(pilgrimId).then(() => null),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["rafeeq-card", pilgrimId] }),
+  });
+}
+
+export function useGroupRafeeqCards(groupId: string) {
+  const { source } = useSession();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (replace: boolean) => source.issueGroupRafeeqCards(groupId, replace),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["rafeeq-card"] }),
   });
 }

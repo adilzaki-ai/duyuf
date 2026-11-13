@@ -1,4 +1,5 @@
 import type { IncidentAction, IncidentKind, IncidentStatus, Priority } from "./incidents";
+import type { RafeeqLang } from "../rafeeq/help";
 import type { Status } from "./journey";
 
 export type GroupKind = "hajj" | "umrah";
@@ -15,7 +16,8 @@ export type Scope =
   | "incident:read"
   | "incident:write"
   | "analyst:ask"
-  | "staff:manage";
+  | "staff:manage"
+  | "rafeeq:issue";
 
 export type Role = "administrator" | "supervisor" | "staff" | "viewer";
 
@@ -355,6 +357,10 @@ export interface Incident {
   assigned_at: string | null;
   resolved_at: string | null;
   updated_at: string;
+  /** raised by the pilgrim on their Rafeeq page */
+  from_rafeeq: boolean;
+  /** when the pilgrim said on Rafeeq that they are fine; staff still close it */
+  pilgrim_ok_at: string | null;
   allowed: IncidentAction[];
 }
 
@@ -465,4 +471,29 @@ export interface StaffChange {
   disabled?: boolean;
   /** a password to hand over; it must be changed at the next sign in */
   password?: string;
+}
+
+/** A pilgrim's Rafeeq card in use. Never the card itself: only its hash is kept. */
+export interface RafeeqCardInfo {
+  language: RafeeqLang;
+  issued_by: string;
+  issued_at: string;
+  last_used_at: string | null;
+}
+
+/** A card just made: the secret comes back this once, to print or send now. */
+export interface IssuedCard {
+  token: string;
+  language: RafeeqLang;
+  pilgrim_id: string;
+  full_name: string;
+  full_name_ar: string | null;
+  group_code: string;
+  group_name: string;
+}
+
+export interface GroupCards {
+  cards: IssuedCard[];
+  /** pilgrims who already had a card and kept it */
+  kept: number;
 }

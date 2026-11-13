@@ -8,10 +8,12 @@ import type {
   FlightDetail,
   Group,
   GroupChange,
+  GroupCards,
   ImportResult,
   IncidentDetail,
   IncidentFilter,
   IncidentList,
+  IssuedCard,
   Me,
   NewIncident,
   NewFlight,
@@ -28,7 +30,9 @@ import type {
   Pilgrim,
   PilgrimDetail,
   PilgrimFilter,
+  RafeeqCardInfo,
 } from "../domain/types";
+import type { RafeeqLang } from "../rafeeq/help";
 import type { DataSource } from "./dataSource";
 import { HttpClient, type HttpOptions } from "./http";
 
@@ -186,6 +190,22 @@ export class PlatformSource implements DataSource {
 
   changePassword(current: string, next: string) {
     return this.http.post<Me>("/v1/auth/password", { current, new: next });
+  }
+
+  async rafeeqCard(pilgrimId: string) {
+    return (await this.http.get<{ card: RafeeqCardInfo | null }>(`/v1/pilgrims/${encodeURIComponent(pilgrimId)}/rafeeq`)).card;
+  }
+
+  issueRafeeqCard(pilgrimId: string, language?: RafeeqLang) {
+    return this.http.post<IssuedCard>(`/v1/pilgrims/${encodeURIComponent(pilgrimId)}/rafeeq`, language ? { language } : {});
+  }
+
+  stopRafeeqCard(pilgrimId: string) {
+    return this.http.delete(`/v1/pilgrims/${encodeURIComponent(pilgrimId)}/rafeeq`);
+  }
+
+  issueGroupRafeeqCards(groupId: string, replace: boolean) {
+    return this.http.post<GroupCards>(`/v1/groups/${encodeURIComponent(groupId)}/rafeeq`, { replace });
   }
 
   async staff() {

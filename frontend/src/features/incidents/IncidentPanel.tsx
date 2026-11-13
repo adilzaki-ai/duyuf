@@ -57,6 +57,10 @@ export function IncidentPanel({ id, teams, onClose }: { id: string; teams: strin
           <p className={s.text} dir="auto">
             {q.data.description}
           </p>
+          {q.data.from_rafeeq && <p className={u.hint}>{t("Sent by the pilgrim from their Rafeeq page.")}</p>}
+          {q.data.pilgrim_ok_at && q.data.status !== "resolved" && (
+            <p className={`${s.tag} ${s.fine}`}>{t("The pilgrim said they are fine at {time}.", { time: fmtDateTime(q.data.pilgrim_ok_at) })}</p>
+          )}
           <ul className={u.list} style={{ marginTop: 10 }}>
             {q.data.pilgrim_name && (
               <li>
@@ -83,7 +87,17 @@ export function IncidentPanel({ id, teams, onClose }: { id: string; teams: strin
             )}
             <li>
               <span>{t("Where")}</span>
-              <span dir="auto">{q.data.location ?? "—"}</span>
+              <span dir="auto">
+                {q.data.location ?? "—"}
+                {mapLink(q.data.location) && (
+                  <>
+                    {" "}
+                    <a href={mapLink(q.data.location)!} target="_blank" rel="noreferrer">
+                      {t("Open map")}
+                    </a>
+                  </>
+                )}
+              </span>
             </li>
             <li>
               <span>{t("Team")}</span>
@@ -199,4 +213,10 @@ export function IncidentPanel({ id, teams, onClose }: { id: string; teams: strin
       )}
     </aside>
   );
+}
+
+/** A map for a place the pilgrim's phone gave ("24.46720, 39.61120 (±25 m)"); none for words staff typed. */
+export function mapLink(location: string | null): string | null {
+  const m = /^\s*(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/.exec(location ?? "");
+  return m ? `https://www.google.com/maps/search/?api=1&query=${m[1]},${m[2]}` : null;
 }

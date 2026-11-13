@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMovePilgrim, usePilgrim } from "../../api/queries";
+import { PilgrimRafeeq } from "../rafeeq/RafeeqCards";
 import { EditPilgrim } from "./PilgrimForm";
 import { useCan } from "../../app/SessionContext";
 import { Failed, Loading, StatusChip, u } from "../../design/ui";
@@ -106,6 +107,9 @@ export function PilgrimPanel({ id, onClose }: { id: string; onClose: () => void 
               </span>
             </li>
           </ul>
+
+          <h3 className={p.h3}>{t("Rafeeq card")}</h3>
+          <PilgrimRafeeq key={id} pilgrimId={id} />
 
           <h3 className={p.h3}>{t("Move to")}</h3>
           {!canMove ? (

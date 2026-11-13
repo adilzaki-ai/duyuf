@@ -19,13 +19,13 @@ from fastapi.responses import JSONResponse
 
 from .core.auth import Identity, identity
 from .core.db import PoolUnavailable, healthy
-from .routers import (analyst, arrivals, groups, imports, incidents, overview, pilgrims, resources,
+from .routers import (analyst, arrivals, groups, imports, incidents, overview, pilgrims, rafeeq, resources,
                       session, staff)
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 
 app = FastAPI(title="Duyuf Platform API", version=VERSION,
-              description="Hajj and Umrah operations: groups, pilgrims, journeys, arrivals.")
+              description="Hajj and Umrah operations: groups, pilgrims, journeys, arrivals, and Rafeeq, the pilgrim's own page.")
 
 
 def _first_line(exc: Exception) -> str:
@@ -74,6 +74,7 @@ app.include_router(incidents.router)
 app.include_router(analyst.router)
 app.include_router(session.router)
 app.include_router(staff.router)
+app.include_router(rafeeq.router)
 
 
 @app.get("/health", tags=["platform"])

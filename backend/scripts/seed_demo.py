@@ -49,7 +49,7 @@ def seed(reset: bool = False) -> dict:
                                 (tid,)).fetchone()["n"]
         if existing and not reset:
             raise SystemExit(f"{op['slug']} already holds {existing} groups; pass --reset to reload")
-        for table in ("incident_event", "incident", "pilgrim_event", "pilgrim", "flight_event", "flight",
+        for table in ("incident_event", "incident", "rafeeq_card", "pilgrim_event", "pilgrim", "flight_event", "flight",
                       "pilgrim_group", "resource_shift"):
             conn.execute(f"""DELETE FROM {table} x USING tenant t
                               WHERE x.tenant_id = t.id AND t.id = %s AND t.is_demo""", (tid,))

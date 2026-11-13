@@ -7,6 +7,7 @@ import { kindLabel } from "../../domain/labels";
 import { countryName, fmtDate, fmtHijri, getLang, t } from "../../i18n";
 import { AddPilgrimForm } from "../pilgrims/PilgrimForm";
 import { PilgrimBrowser } from "../pilgrims/PilgrimsPage";
+import { GroupRafeeq } from "../rafeeq/RafeeqCards";
 import { EditGroupForm } from "./GroupForm";
 import { ImportPilgrims } from "./ImportPilgrims";
 
@@ -15,7 +16,8 @@ export function GroupPage() {
   const q = useGroup(id);
   const canGroup = useCan("group:write");
   const canPilgrim = useCan("pilgrim:write");
-  const [open, setOpen] = useState<"edit" | "add" | "import" | null>(null);
+  const canCards = useCan("rafeeq:issue");
+  const [open, setOpen] = useState<"edit" | "add" | "import" | "cards" | null>(null);
   if (q.isPending) return <Loading />;
   if (q.isError) return <Failed error={q.error} />;
   const g = q.data;
@@ -30,11 +32,16 @@ export function GroupPage() {
         title={g.name}
         sub={`${g.code} · ${kindLabel(g.kind)} · ${t("Season {s}", { s: g.season })} · ${countryName(g.origin_country)}`}
       >
-        {!open && (canGroup || canPilgrim) && (
+        {!open && (canGroup || canPilgrim || canCards) && (
           <div className={u.headActions}>
             {canGroup && (
               <button type="button" className={`${u.button} ${u.quiet}`} onClick={() => setOpen("edit")}>
                 {t("Edit group")}
+              </button>
+            )}
+            {canCards && (
+              <button type="button" className={`${u.button} ${u.quiet}`} onClick={() => setOpen("cards")}>
+                {t("Rafeeq cards")}
               </button>
             )}
             {canPilgrim && (
@@ -52,6 +59,7 @@ export function GroupPage() {
       </PageHead>
       {open === "edit" && <EditGroupForm key={g.id} group={g} onClose={() => setOpen(null)} />}
       {open === "add" && <AddPilgrimForm groupId={g.id} country={g.origin_country} onClose={() => setOpen(null)} />}
+      {open === "cards" && <GroupRafeeq groupId={g.id} onClose={() => setOpen(null)} />}
       {open === "import" && <ImportPilgrims groupId={g.id} country={g.origin_country} onClose={() => setOpen(null)} />}
       <div className={u.grid2}>
         <section className={u.card}>
