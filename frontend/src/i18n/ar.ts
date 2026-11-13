@@ -311,7 +311,7 @@ export const AR: Record<string, string> = {
   "The analyst is not available here": "المحلل غير متاح هنا",
   "It needs the platform. Sample mode does not send questions out.": "يحتاج إلى المنصة. لا يُرسل وضع العرض أي سؤال للخارج.",
   "The server has no key for the analyst yet. Set ANTHROPIC_API_KEY in backend/.env.local and restart it.":
-    "لا يوجد مفتاح للمحلل على الخادم بعد. اضبط ANTHROPIC_API_KEY في backend/.env.local ثم أعد تشغيله.",
+    "لا يوجد مفتاح للمحلل على الخادم بعد. اضبط \u2066ANTHROPIC_API_KEY\u2069 في \u2066backend/.env.local\u2069 ثم أعد تشغيله.",
   "Working it out. This can take up to a minute.": "جارٍ التحليل. قد يستغرق ذلك دقيقة.",
   "Ask a follow-up": "اسأل سؤالًا تكميليًا",
   "Your question": "سؤالك",

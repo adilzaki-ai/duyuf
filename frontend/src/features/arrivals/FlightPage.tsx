@@ -6,7 +6,7 @@ import { Failed, Loading, PageHead, u } from "../../design/ui";
 import { airportName } from "../../domain/airports";
 import { BUS_SEATS, INTERPRETER_EVERY, OLDER_AGE } from "../../domain/brief";
 import type { FlightDetail, FlightEvent } from "../../domain/types";
-import { fmtDate, fmtDateTime, fmtHijri, fmtNum, fmtTime, getLang, t } from "../../i18n";
+import { fmtDate, fmtDateTime, fmtHijri, fmtNum, fmtTime, getLang, ltr, route, t } from "../../i18n";
 import { daysBetween, ksaDate } from "../../lib/dates";
 import { PilgrimBrowser } from "../pilgrims/PilgrimsPage";
 import a from "./arrivals.module.css";
@@ -187,7 +187,7 @@ export function FlightPage() {
       </p>
       <PageHead
         title={f.number}
-        sub={`${f.origin_airport} → ${airportName(f.arrival_airport)} (${f.arrival_airport})`}
+        sub={route(f.origin_airport, `${airportName(f.arrival_airport)} (${ltr(f.arrival_airport)})`)}
       >
         <FlightStateChip flight={f} />
       </PageHead>

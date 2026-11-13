@@ -3,7 +3,7 @@ import { u } from "../../design/ui";
 import { ARRIVAL_AIRPORTS, airportName } from "../../domain/airports";
 import { INTERPRETER_LANGUAGES } from "../../domain/languages";
 import type { Arrivals, ExtraResource, LoadRow, ResourceKind, Shortfall, WhatIf } from "../../domain/types";
-import { fmtNum, getLang, languageName, t } from "../../i18n";
+import { fmtNum, getLang, languageName, ltr, sep, t } from "../../i18n";
 import { ksaTime } from "../../lib/dates";
 import a from "./arrivals.module.css";
 
@@ -13,7 +13,7 @@ export const kindName = (k: ResourceKind, language?: string | null) =>
   k === "interpreter" && language ? `${t("Interpreters")} (${languageName(language)})` : t(KIND[k]);
 
 /** "Wheelchairs 1, Interpreters (Indonesian) 2" */
-export const shortText = (s: Shortfall[]) => s.map((x) => `${kindName(x.kind, x.language)} ${fmtNum(x.short)}`).join(", ");
+export const shortText = (s: Shortfall[]) => s.map((x) => `${kindName(x.kind, x.language)} ${fmtNum(x.short)}`).join(sep());
 
 export const gapCount = (d: Arrivals) => d.load.reduce((n, r) => n + r.short.length, 0);
 
@@ -25,7 +25,7 @@ export function blockName(start: string, hours: number): string {
     timeZone: "Asia/Riyadh",
   }).format(new Date(start));
   const from = new Date(start);
-  return `${day}, ${ksaTime(from)}–${ksaTime(new Date(from.getTime() + hours * 3_600_000))}`;
+  return `${day}${sep()}${ltr(`${ksaTime(from)}–${ksaTime(new Date(from.getTime() + hours * 3_600_000))}`)}`;
 }
 
 function Cell({ need, have }: { need: number; have: number }) {
@@ -62,7 +62,9 @@ export function LoadTable({ rows, slotHours }: { rows: LoadRow[]; slotHours: num
               <tr key={`${r.start}-${r.airport}`} className={r.short.length ? a.gapRow : undefined}>
                 <td>{blockName(r.start, slotHours)}</td>
                 <td>{airportName(r.airport)}</td>
-                <td className={u.mono}>{r.flights.join(", ")}</td>
+                <td className={u.mono} dir="ltr" style={{ textAlign: "end" }}>
+                  {r.flights.join(", ")}
+                </td>
                 <td>
                   <Cell need={r.need.wheelchair} have={r.have.wheelchair} />
                 </td>

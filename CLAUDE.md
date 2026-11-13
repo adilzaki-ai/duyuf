@@ -31,6 +31,9 @@ database and ports. Never touch Sky Logics from here.
 ## Text
 - English is the key: `t("Pilgrims")`, Arabic in `src/i18n/ar.ts`. A test fails
   when a `t("…")` string has no Arabic. Use logical CSS (`inline-start`), not left/right.
+- Inside Arabic text, keep Latin runs whole: `ltr()` for time ranges and codes,
+  `route()` for "from → to", `sep()` for list commas, `<bdi>` around flight or
+  group links, `dir="auto"` on anything staff typed. Check with `?lang=ar`.
 - Plain short American English on screen; subtitles of 8 words or fewer.
 - Dates: Gregorian with the Umm al-Qura Hijri date beside it; "today" is Asia/Riyadh.
 

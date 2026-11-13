@@ -6,7 +6,7 @@ import { Failed, Loading, PageHead, Tile, u } from "../../design/ui";
 import { airportName } from "../../domain/airports";
 import { BUS_SEATS, INTERPRETER_EVERY } from "../../domain/brief";
 import type { Arrivals, Flight, WhatIf } from "../../domain/types";
-import { fmtDate, fmtHijri, fmtNum, fmtTime, t } from "../../i18n";
+import { fmtDate, fmtHijri, fmtNum, fmtTime, route, sep, t } from "../../i18n";
 import { ksaDate } from "../../lib/dates";
 import { AddFlight } from "./AddFlight";
 import a from "./arrivals.module.css";
@@ -31,7 +31,12 @@ interface Item {
 /** What to do next, most pressing first. */
 function attention(d: Arrivals): Item[] {
   const items: Item[] = [];
-  const link = (f: Flight) => <Link to={`/arrivals/${f.id}`}>{f.number}</Link>;
+  /* <bdi>: a Latin flight number inside an Arabic sentence keeps its neighbours in place */
+  const link = (f: Flight) => (
+    <bdi>
+      <Link to={`/arrivals/${f.id}`}>{f.number}</Link>
+    </bdi>
+  );
   for (const f of d.flights.filter((f) => f.state === "due"))
     items.push({ key: `due-${f.id}`, urgent: true, text: <>{link(f)} {t("should have landed. Confirm it.")}</> });
   for (const r of d.load.filter((r) => r.short.length))
@@ -41,7 +46,9 @@ function attention(d: Arrivals): Item[] {
       text: (
         <>
           <b>
-            {airportName(r.airport)}, {blockName(r.start, d.slot_hours)}
+            {airportName(r.airport)}
+            {sep()}
+            {blockName(r.start, d.slot_hours)}
           </b>
           : {t("short of {what}.", { what: shortText(r.short) })}
         </>
@@ -63,7 +70,10 @@ function attention(d: Arrivals): Item[] {
       urgent: false,
       text: (
         <>
-          <Link to={`/groups/${g.id}`}>{g.name}</Link>: {t("{n} with no flight.", { n: g.without_flight })}{" "}
+          <bdi>
+            <Link to={`/groups/${g.id}`}>{g.name}</Link>
+          </bdi>
+          : {t("{n} with no flight.", { n: g.without_flight })}{" "}
           <span className={u.muted}>
             {t("Lands")} {fmtDate(g.arrival_date)}
           </span>
@@ -118,7 +128,7 @@ function FlightsTable({ data }: { data: Arrivals }) {
                     {f.number}
                   </Link>
                   <span className={u.sub}>
-                    {f.origin_airport} → {airportName(f.arrival_airport)}
+                    {route(f.origin_airport, airportName(f.arrival_airport))}
                   </span>
                 </td>
                 <td>

@@ -147,7 +147,11 @@ export function PilgrimPanel({ id, onClose }: { id: string; onClose: () => void 
                 <span className={u.sub}>
                   {fmtDateTime(h.at)} · {t("by {who}", { who: h.actor })}
                 </span>
-                {h.note && <span className={u.sub}>“{h.note}”</span>}
+                {h.note && (
+                  <span className={u.sub} dir="auto">
+                    “{h.note}”
+                  </span>
+                )}
               </li>
             ))}
           </ol>
