@@ -10,12 +10,14 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator, model_validator
 from psycopg.types.json import Jsonb
 
-from ..arrivals.brief import KSA, SLOT_HOURS, brief, state, waves
+from ..arrivals.brief import KSA, SLOT_HOURS, brief, slot_start, state, waves
+from ..arrivals.plan import load
 from ..core.auth import Identity, require
 from ..core.db import tenant_session
 from ..pilgrims.status import refusal
@@ -95,33 +97,102 @@ def _locked(conn, flight_id: str) -> dict:
     return row
 
 
-@router.get("/arrivals")
-def arrivals(hours: int = Query(default=48, ge=6, le=168), who: Identity = Depends(require("flight:read"))):
-    with tenant_session(who.tenant_id) as conn:
-        now = _now(conn)
-        until = now + timedelta(hours=hours)
-        flights = _flights(conn, """
-            WHERE coalesce(f.estimated_at, f.scheduled_at) < %(until)s
-              AND (coalesce(f.estimated_at, f.scheduled_at) >= %(now)s
-                   OR (f.landed_at IS NULL AND coalesce(f.estimated_at, f.scheduled_at) >= %(due)s)
-                   OR f.landed_at >= %(landed)s)""",
-            {"now": now, "until": until, "due": now - DUE_GRACE, "landed": now - LANDED_GRACE}, now)
-        # Groups landing in the window with pilgrims who are on no flight yet.
-        unplanned = conn.execute("""
-            SELECT g.id::text, g.code, g.name, g.arrival_date, count(*)::int AS without_flight
-              FROM pilgrim_group g JOIN pilgrim p ON p.group_id = g.id
-             WHERE g.arrival_date BETWEEN %s AND %s
-               AND p.arrival_flight_id IS NULL AND p.status = ANY(%s)
-             GROUP BY g.id ORDER BY g.arrival_date, g.code""",
-            (now.astimezone(KSA).date(), until.astimezone(KSA).date(), list(PRE_ARRIVAL))).fetchall()
+def _on_board(f: dict, now: datetime, until: datetime) -> bool:
+    """Lands before `until`, and is still to come, unconfirmed (for two days) or just down."""
+    e = f["expected_at"]
+    if e >= until:
+        return False
+    return (e >= now or (not f["landed_at"] and e >= now - DUE_GRACE)
+            or (f["landed_at"] is not None and f["landed_at"] >= now - LANDED_GRACE))
+
+
+def _board(conn, hours: int, delays: dict[str, int] | None = None, extra: list[dict] | None = None) -> dict:
+    """The arrivals board. With `delays` (flight id → minutes later) and `extra`
+    resources (for the whole window), the same board as it would be: nothing
+    is written."""
+    delays = delays or {}
+    now = _now(conn)
+    until = now + timedelta(hours=hours)
+    latest = timedelta(minutes=max(delays.values(), default=0))
+    flights = _flights(conn, "WHERE coalesce(f.estimated_at, f.scheduled_at) BETWEEN %s AND %s",
+                       (now - DUE_GRACE - latest, until), now)
+    for f in flights:
+        if f["id"] in delays and not f["landed_at"]:
+            f["expected_at"] = f["estimated_at"] = f["expected_at"] + timedelta(minutes=delays[f["id"]])
+            f["delay_minutes"] = int((f["expected_at"] - f["scheduled_at"]).total_seconds() // 60)
+            f["state"] = state(f["expected_at"], f["scheduled_at"], f["landed_at"], now)
+    flights = sorted((f for f in flights if _on_board(f, now, until)), key=lambda f: (f["expected_at"], f["number"]))
+
+    shifts = conn.execute(
+        "SELECT airport, kind, language, quantity, starts_at, ends_at FROM resource_shift "
+        "WHERE ends_at > %s AND starts_at < %s", (now - timedelta(hours=SLOT_HOURS), until)).fetchall()
+    forever = (now - timedelta(days=3650), now + timedelta(days=3650))
+    shifts += [{**x, "starts_at": forever[0], "ends_at": forever[1]} for x in (extra or [])]
+    rows = load(flights, shifts, now, hours)
+    gap_at = {(r["airport"], r["start"]) for r in rows if r["short"]}
+    first = slot_start(now)
+    block = timedelta(hours=SLOT_HOURS)
+    for f in flights:
+        f["short"] = (not f["landed_at"] and f["expected_at"] >= first
+                      and (f["arrival_airport"], first + block * int((f["expected_at"] - first) / block)) in gap_at)
+
+    # Groups landing in the window with pilgrims who are on no flight yet.
+    unplanned = conn.execute("""
+        SELECT g.id::text, g.code, g.name, g.arrival_date, count(*)::int AS without_flight
+          FROM pilgrim_group g JOIN pilgrim p ON p.group_id = g.id
+         WHERE g.arrival_date BETWEEN %s AND %s
+           AND p.arrival_flight_id IS NULL AND p.status = ANY(%s)
+         GROUP BY g.id ORDER BY g.arrival_date, g.code""",
+        (now.astimezone(KSA).date(), until.astimezone(KSA).date(), list(PRE_ARRIVAL))).fetchall()
     return {
         "now": now,
         "hours": hours,
         "slot_hours": SLOT_HOURS,
         "flights": flights,
         "waves": waves(flights, now, hours),
+        "load": rows,
         "unplanned": unplanned,
+        "what_if": bool(delays or extra),
     }
+
+
+@router.get("/arrivals")
+def arrivals(hours: int = Query(default=48, ge=6, le=168), who: Identity = Depends(require("flight:read"))):
+    with tenant_session(who.tenant_id) as conn:
+        return _board(conn, hours)
+
+
+class Delay(BaseModel):
+    flight_id: str
+    minutes: int = Field(ge=0, le=24 * 60)
+
+
+class Extra(BaseModel):
+    airport: str = Field(pattern=r"^[A-Z]{3}$")
+    kind: Literal["wheelchair", "bus", "interpreter"]
+    language: str | None = Field(default=None, pattern=r"^[a-z]{2}$")
+    quantity: int = Field(ge=1, le=1000)
+
+    @model_validator(mode="after")
+    def _language(self):
+        if (self.kind == "interpreter") != (self.language is not None):
+            raise ValueError("an interpreter needs a language; nothing else has one")
+        return self
+
+
+class WhatIf(BaseModel):
+    hours: int = Field(default=48, ge=6, le=168)
+    delays: list[Delay] = Field(default=[], max_length=50)
+    extra: list[Extra] = Field(default=[], max_length=50)
+
+
+@router.post("/arrivals/what-if")
+def what_if(body: WhatIf, who: Identity = Depends(require("flight:read"))):
+    """The board as it would be if these flights were later and these resources
+    were added. Read-only: any role may ask, and nothing is saved."""
+    with tenant_session(who.tenant_id) as conn:
+        return _board(conn, body.hours, {d.flight_id: d.minutes for d in body.delays},
+                      [x.model_dump() for x in body.extra])
 
 
 @router.get("/flights/{flight_id}")

@@ -7,6 +7,9 @@ import type {
   Group,
   Me,
   NewFlight,
+  NewShift,
+  Shift,
+  WhatIf,
   Overview,
   Pilgrim,
   PilgrimDetail,
@@ -36,6 +39,12 @@ export interface DataSource {
   assignToFlight(id: string, who: Assignment): Promise<FlightDetail & { added: number }>;
   /** Moves everyone on it with a visa to "arrived"; says how many moved and how many had no visa. */
   landFlight(id: string, note?: string): Promise<FlightDetail & { arrived: number; no_visa: number }>;
+  /** The board as it would be with these delays and extra resources. Nothing is saved. */
+  whatIf(w: WhatIf): Promise<Arrivals>;
+  /** Resources on shift that are not over yet. */
+  shifts(): Promise<Shift[]>;
+  addShift(s: NewShift): Promise<Shift>;
+  removeShift(id: string): Promise<void>;
 }
 
 /** A refusal or failure, carrying the platform's own words so the screen can show them. */

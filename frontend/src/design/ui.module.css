@@ -224,6 +224,11 @@
   cursor: pointer;
 }
 
+a.button {
+  display: inline-block;
+  text-decoration: none;
+}
+
 .button.quiet {
   background: transparent;
   color: var(--brand-2);

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "../app/SessionContext";
 import type { Status } from "../domain/journey";
-import type { Assignment, FlightChange, NewFlight, PilgrimFilter } from "../domain/types";
+import type { Assignment, FlightChange, NewFlight, NewShift, PilgrimFilter, WhatIf } from "../domain/types";
 
 export function useOverview() {
   const { source } = useSession();
@@ -29,7 +29,7 @@ export function usePilgrim(id: string | undefined) {
 }
 
 /** Every screen that counts pilgrims, by stage or by flight. */
-const COUNTED = ["pilgrims", "pilgrim", "groups", "group", "overview", "arrivals", "flight"];
+const COUNTED = ["pilgrims", "pilgrim", "groups", "group", "overview", "arrivals", "flight", "what-if", "shifts"];
 
 function useRefreshAll() {
   const qc = useQueryClient();
@@ -83,4 +83,27 @@ export function useLandFlight(id: string) {
   const { source } = useSession();
   const refresh = useRefreshAll();
   return useMutation({ mutationFn: (note?: string) => source.landFlight(id, note), onSuccess: refresh });
+}
+
+/** The board under a what-if: null asks for nothing. Read-only, so it is a query, not a change. */
+export function useWhatIf(w: WhatIf | null) {
+  const { source } = useSession();
+  return useQuery({ queryKey: ["what-if", w], queryFn: () => source.whatIf(w!), enabled: !!w });
+}
+
+export function useShifts() {
+  const { source } = useSession();
+  return useQuery({ queryKey: ["shifts"], queryFn: () => source.shifts() });
+}
+
+export function useAddShift() {
+  const { source } = useSession();
+  const refresh = useRefreshAll();
+  return useMutation({ mutationFn: (s: NewShift) => source.addShift(s), onSuccess: refresh });
+}
+
+export function useRemoveShift() {
+  const { source } = useSession();
+  const refresh = useRefreshAll();
+  return useMutation({ mutationFn: (id: string) => source.removeShift(id), onSuccess: refresh });
 }

@@ -75,6 +75,14 @@ per 40 speakers of a language other than Arabic or English). The rules live in
 `backend/api/duyuf/arrivals/brief.py`; change them there and in
 `frontend/src/domain/brief.ts` — a frontend test reads the Python file.
 
+**Resources and gaps.** Shifts record what is at each airport and when
+(wheelchairs, buses, interpreters by language; *Arrivals → Resources*). The
+board sets need against them block by block: each flight holds what its brief
+asks for through the 3-hour block it lands in, and a shift counts for a block
+it covers whole. **What if…** tries delays and extra resources against the
+board without saving anything. Rule: `arrivals/plan.py` ↔ `domain/plan.ts`,
+tested on the same case on both sides.
+
 ## Tests
 
 ```bash

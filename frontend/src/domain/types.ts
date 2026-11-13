@@ -146,6 +146,8 @@ export interface Flight {
   note: string | null;
   groups: FlightGroup[];
   brief: Brief;
+  /** on the board only: its airport is short of something in the block it lands in */
+  short?: boolean;
 }
 
 export type FlightEvent =
@@ -171,13 +173,77 @@ export interface UnplannedGroup {
   without_flight: number;
 }
 
+export type ResourceKind = "wheelchair" | "bus" | "interpreter";
+
+/** Wheelchairs, buses, and interpreters by language. */
+export interface Resources {
+  wheelchair: number;
+  bus: number;
+  interpreter: Record<string, number>;
+}
+
+export interface Shortfall {
+  kind: ResourceKind;
+  language: string | null;
+  short: number;
+}
+
+/** One airport, one block of hours with a flight landing: what is needed and what is on shift. */
+export interface LoadRow {
+  airport: string;
+  start: string;
+  flights: string[];
+  need: Resources;
+  have: Resources;
+  short: Shortfall[];
+}
+
 export interface Arrivals {
   now: string;
   hours: number;
   slot_hours: number;
   flights: Flight[];
   waves: Wave[];
+  load: LoadRow[];
   unplanned: UnplannedGroup[];
+  /** true when this is a what-if view, not the live board */
+  what_if: boolean;
+}
+
+export interface Shift {
+  id: string;
+  airport: string;
+  kind: ResourceKind;
+  language: string | null;
+  quantity: number;
+  starts_at: string;
+  ends_at: string;
+  note: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export interface NewShift {
+  airport: string;
+  kind: ResourceKind;
+  language: string | null;
+  quantity: number;
+  starts_at: string;
+  ends_at: string;
+  note?: string;
+}
+
+export interface ExtraResource {
+  airport: string;
+  kind: ResourceKind;
+  language: string | null;
+  quantity: number;
+}
+
+export interface WhatIf {
+  hours: number;
+  delays: { flight_id: string; minutes: number }[];
+  extra: ExtraResource[];
 }
 
 export interface NewFlight {

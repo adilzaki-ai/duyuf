@@ -81,4 +81,54 @@ describe("the sample", () => {
       m.createFlight({ number: "nope", origin_airport: "LAG", arrival_airport: "MED", scheduled_at: f.scheduled_at }),
     ).rejects.toThrow(/looks like SV 3102/);
   });
+
+  it("shows Madinah short around GA 980, and a what-if that closes it without saving", async () => {
+    const m = new MockSource(NOW);
+    const board = await m.arrivals(48);
+    const row = board.load.find((r) => r.flights.includes("GA 980"))!;
+    expect(row).toMatchObject({ airport: "MED", start: "2026-11-13T09:00:00+03:00" });
+    expect(row.short).toEqual([
+      { kind: "wheelchair", language: null, short: 1 },
+      { kind: "interpreter", language: "id", short: 1 },
+    ]);
+    expect(board.flights.find((f) => f.number === "GA 980")!.short).toBe(true);
+    expect(board.flights.find((f) => f.number === "MS 683")!.short).toBe(false);
+
+    const fixed = await m.whatIf({
+      hours: 48,
+      delays: [],
+      extra: [
+        { airport: "MED", kind: "wheelchair", language: null, quantity: 1 },
+        { airport: "MED", kind: "interpreter", language: "id", quantity: 1 },
+      ],
+    });
+    expect(fixed.what_if).toBe(true);
+    expect(fixed.load.find((r) => r.flights.includes("GA 980"))!.short).toEqual([]);
+
+    const ga = board.flights.find((f) => f.number === "GA 980")!;
+    const later = await m.whatIf({ hours: 48, delays: [{ flight_id: ga.id, minutes: 180 }], extra: [] });
+    expect(later.flights.find((f) => f.number === "GA 980")!.expected_at).toBe("2026-11-13T14:00:00+03:00");
+    expect((await m.flight(ga.id)).expected_at).toBe("2026-11-13T11:00:00+03:00");
+  });
+
+  it("plans and removes shifts", async () => {
+    const m = new MockSource(NOW);
+    expect(await m.shifts()).toHaveLength(6);
+    const s = await m.addShift({
+      airport: "med",
+      kind: "interpreter",
+      language: "id",
+      quantity: 1,
+      starts_at: "2026-11-12T00:00:00+03:00",
+      ends_at: "2026-11-15T00:00:00+03:00",
+    });
+    expect(s.airport).toBe("MED");
+    const row = (await m.arrivals(48)).load.find((r) => r.flights.includes("GA 980"))!;
+    expect(row.have.interpreter).toEqual({ id: 2 });
+    await m.removeShift(s.id);
+    await expect(m.removeShift(s.id)).rejects.toThrow(/no such shift/);
+    await expect(
+      m.addShift({ airport: "JED", kind: "interpreter", language: null, quantity: 1, starts_at: s.starts_at, ends_at: s.ends_at }),
+    ).rejects.toThrow(/needs a language/);
+  });
 });

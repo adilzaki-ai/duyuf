@@ -39,6 +39,10 @@ export class HttpClient {
     return this.request<T>("PATCH", path, undefined, body);
   }
 
+  delete(path: string) {
+    return this.request<void>("DELETE", path);
+  }
+
   private async request<T>(method: string, path: string, query?: Query, body?: unknown): Promise<T> {
     /* Resolved against the page, so a base of "/" means "wherever this app was loaded from". */
     const url = new URL(this.base + path, globalThis.location?.href);
@@ -61,6 +65,7 @@ export class HttpClient {
       clearTimeout(timer);
     }
     if (!res.ok) throw new DataSourceError(describe(res.status, await res.text()), { status: res.status });
+    if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
   }
 }

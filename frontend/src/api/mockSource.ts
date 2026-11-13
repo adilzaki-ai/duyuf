@@ -1,5 +1,6 @@
 import sample from "../../../sample/demo.json";
 import { brief, flightState, landingDay, normalFlightNumber, waves } from "../domain/brief";
+import { blockOf, load } from "../domain/plan";
 import { MOVES, refusal, STATUSES, type Status } from "../domain/journey";
 import type {
   Arrivals,
@@ -14,12 +15,15 @@ import type {
   MovingGroup,
   Need,
   NewFlight,
+  NewShift,
   Overview,
   Pilgrim,
   PilgrimDetail,
   PilgrimFilter,
   Scope,
+  Shift,
   UnplannedGroup,
+  WhatIf,
 } from "../domain/types";
 import { addDays, ksaDate, ksaIso } from "../lib/dates";
 import { DataSourceError, type DataSource } from "./dataSource";
@@ -84,6 +88,7 @@ export class MockSource implements DataSource {
   private readonly groupsById = new Map<string, Omit<Group, "pilgrims" | "by_status">>();
   private readonly people = new Map<string, PilgrimDetail>();
   private readonly flights = new Map<string, FlightRecord>();
+  private readonly shiftsById = new Map<string, Shift>();
 
   constructor(now?: Date) {
     this.clock = now ? () => now : () => new Date();
@@ -102,6 +107,21 @@ export class MockSource implements DataSource {
         leader_phone: g.leader_phone,
       });
     }
+    sample.resources.forEach((r, i) => {
+      const id = `s-${i}`;
+      this.shiftsById.set(id, {
+        id,
+        airport: r.airport,
+        kind: r.kind as Shift["kind"],
+        language: r.language,
+        quantity: r.quantity,
+        starts_at: at(this.today, r.from_day, 0),
+        ends_at: at(this.today, r.to_day, 0),
+        note: null,
+        created_by: "Demo load",
+        created_at: at(this.today, -20, 0),
+      });
+    });
     const flightId = new Map<string, string>();
     for (const f of sample.flights) {
       const id = `f-${f.number.replace(" ", "")}`;
@@ -306,11 +326,28 @@ export class MockSource implements DataSource {
   }
 
   async arrivals(hours: number): Promise<Arrivals> {
+    return this.board(hours, {}, []);
+  }
+
+  async whatIf(w: WhatIf): Promise<Arrivals> {
+    for (const x of w.extra)
+      if ((x.kind === "interpreter") !== (x.language != null))
+        throw new DataSourceError("an interpreter needs a language; nothing else has one", { status: 422 });
+    return this.board(w.hours, Object.fromEntries(w.delays.map((d) => [d.flight_id, d.minutes])), w.extra);
+  }
+
+  /** The platform's board: with delays and extra resources it is a what-if, and nothing is kept. */
+  private board(hours: number, delays: Record<string, number>, extra: WhatIf["extra"]): Arrivals {
     const now = this.clock();
     const t = now.getTime();
     const until = t + hours * HOUR;
     const flights = [...this.flights.values()]
-      .map((f) => this.view(f, now))
+      .map((rec) => {
+        const minutes = delays[rec.id];
+        if (!minutes || rec.landed_at) return this.view(rec, now);
+        const moved = plusMinutes(rec.estimated_at ?? rec.scheduled_at, minutes);
+        return this.view({ ...rec, estimated_at: moved }, now);
+      })
       .filter((f) => {
         const e = Date.parse(f.expected_at);
         if (e >= until) return false;
@@ -328,7 +365,65 @@ export class MockSource implements DataSource {
       if (n) unplanned.push({ id: g.id, code: g.code, name: g.name, arrival_date: g.arrival_date, without_flight: n });
     }
     unplanned.sort((a, b) => a.arrival_date.localeCompare(b.arrival_date) || a.code.localeCompare(b.code));
-    return { now: ksaIso(now), hours, slot_hours: 3, flights, waves: waves(flights, now, hours), unplanned };
+    const far = (d: number) => ksaIso(new Date(t + d * 3650 * 24 * HOUR));
+    const shifts = [
+      ...this.shiftsById.values(),
+      ...extra.map((x) => ({ ...x, starts_at: far(-1), ends_at: far(1) })),
+    ];
+    const rows = load(flights, shifts, now, hours);
+    const gapAt = new Set(rows.filter((r) => r.short.length).map((r) => `${Date.parse(r.start)}|${r.airport}`));
+    const first = blockOf(t, now);
+    const marked = flights.map((f) => {
+      const at = Date.parse(f.expected_at);
+      return { ...f, short: !f.landed_at && at >= first && gapAt.has(`${blockOf(at, now)}|${f.arrival_airport}`) };
+    });
+    return {
+      now: ksaIso(now),
+      hours,
+      slot_hours: 3,
+      flights: marked,
+      waves: waves(marked, now, hours),
+      load: rows,
+      unplanned,
+      what_if: Object.keys(delays).length > 0 || extra.length > 0,
+    };
+  }
+
+  /* ---- resources on shift ---- */
+
+  async shifts(): Promise<Shift[]> {
+    const now = this.clock().getTime();
+    const key = (s: Shift) => [s.airport, s.starts_at, s.kind, s.language ?? ""].join("|");
+    return [...this.shiftsById.values()]
+      .filter((s) => Date.parse(s.ends_at) > now)
+      .sort((a, b) => (key(a) < key(b) ? -1 : 1));
+  }
+
+  async addShift(n: NewShift): Promise<Shift> {
+    if (!/^[A-Za-z]{3}$/.test(n.airport)) throw new DataSourceError("an airport is three letters, like JED", { status: 422 });
+    if (Date.parse(n.ends_at) <= Date.parse(n.starts_at))
+      throw new DataSourceError("a shift ends after it starts", { status: 422 });
+    if ((n.kind === "interpreter") !== (n.language != null))
+      throw new DataSourceError("an interpreter needs a language; nothing else has one", { status: 422 });
+    if (n.quantity < 1 || n.quantity > 1000) throw new DataSourceError("between 1 and 1000", { status: 422 });
+    const s: Shift = {
+      id: `s-new-${this.shiftsById.size + 1}-${Date.now()}`,
+      airport: n.airport.toUpperCase(),
+      kind: n.kind,
+      language: n.language,
+      quantity: n.quantity,
+      starts_at: ksaIso(new Date(n.starts_at)),
+      ends_at: ksaIso(new Date(n.ends_at)),
+      note: n.note ?? null,
+      created_by: ACTOR,
+      created_at: this.now(),
+    };
+    this.shiftsById.set(s.id, s);
+    return s;
+  }
+
+  async removeShift(id: string): Promise<void> {
+    if (!this.shiftsById.delete(id)) throw new DataSourceError("no such shift", { status: 404 });
   }
 
   async flight(id: string): Promise<FlightDetail> {

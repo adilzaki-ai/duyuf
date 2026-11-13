@@ -1,16 +1,17 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useArrivals } from "../../api/queries";
+import { useArrivals, useWhatIf } from "../../api/queries";
 import { useCan } from "../../app/SessionContext";
 import { Failed, Loading, PageHead, Tile, u } from "../../design/ui";
 import { airportName } from "../../domain/airports";
 import { BUS_SEATS, INTERPRETER_EVERY } from "../../domain/brief";
-import type { Arrivals, Flight } from "../../domain/types";
+import type { Arrivals, Flight, WhatIf } from "../../domain/types";
 import { fmtDate, fmtHijri, fmtNum, fmtTime, t } from "../../i18n";
 import { ksaDate } from "../../lib/dates";
 import { AddFlight } from "./AddFlight";
 import a from "./arrivals.module.css";
 import { dayWord, FlightStateChip, Languages } from "./parts";
+import { blockName, gapCount, LoadTable, shortText, WhatIfPanel } from "./Plan";
 import { WaveChart } from "./WaveChart";
 
 const WINDOWS = [
@@ -33,6 +34,19 @@ function attention(d: Arrivals): Item[] {
   const link = (f: Flight) => <Link to={`/arrivals/${f.id}`}>{f.number}</Link>;
   for (const f of d.flights.filter((f) => f.state === "due"))
     items.push({ key: `due-${f.id}`, urgent: true, text: <>{link(f)} {t("should have landed. Confirm it.")}</> });
+  for (const r of d.load.filter((r) => r.short.length))
+    items.push({
+      key: `gap-${r.airport}-${r.start}`,
+      urgent: true,
+      text: (
+        <>
+          <b>
+            {airportName(r.airport)}, {blockName(r.start, d.slot_hours)}
+          </b>
+          : {t("short of {what}.", { what: shortText(r.short) })}
+        </>
+      ),
+    });
   for (const f of d.flights.filter((f) => f.state !== "landed" && f.brief.no_visa))
     items.push({
       key: `visa-${f.id}`,
@@ -112,6 +126,7 @@ function FlightsTable({ data }: { data: Arrivals }) {
                   {f.brief.no_visa > 0 && f.state !== "landed" && (
                     <span className={a.warn}>{t("{n} with no visa yet.", { n: f.brief.no_visa })}</span>
                   )}
+                  {f.short && <span className={a.warn}>{t("Short of resources")}</span>}
                 </td>
                 <td className={a.num}>{fmtNum(f.brief.pilgrims)}</td>
                 <td className={a.num}>{fmtNum(f.brief.wheelchair)}</td>
@@ -133,8 +148,15 @@ function FlightsTable({ data }: { data: Arrivals }) {
 export function ArrivalsPage() {
   const [hours, setHours] = useState(48);
   const [adding, setAdding] = useState(false);
+  const [trying, setTrying] = useState(false);
+  const [scenario, setScenario] = useState<Omit<WhatIf, "hours"> | null>(null);
   const canPlan = useCan("flight:write");
   const q = useArrivals(hours);
+  const wi = useWhatIf(scenario ? { ...scenario, hours } : null);
+  const backToLive = () => {
+    setTrying(false);
+    setScenario(null);
+  };
 
   return (
     <>
@@ -147,6 +169,14 @@ export function ArrivalsPage() {
               </button>
             ))}
           </div>
+          <Link to="/arrivals/resources" className={`${u.button} ${u.quiet}`}>
+            {t("Resources")}
+          </Link>
+          {!trying && (
+            <button type="button" className={`${u.button} ${u.quiet}`} onClick={() => setTrying(true)}>
+              {t("What if…")}
+            </button>
+          )}
           {canPlan && !adding && (
             <button type="button" className={u.button} onClick={() => setAdding(true)}>
               {t("Add flight")}
@@ -155,12 +185,28 @@ export function ArrivalsPage() {
         </div>
       </PageHead>
       {adding && <AddFlight onClose={() => setAdding(false)} />}
+      {trying && q.data && <WhatIfPanel live={q.data} onShow={setScenario} onClose={backToLive} />}
       {q.isPending ? (
         <Loading />
       ) : q.isError ? (
         <Failed error={q.error} />
-      ) : (
+      ) : !scenario ? (
         <Board data={q.data} />
+      ) : wi.isPending ? (
+        <Loading />
+      ) : wi.isError ? (
+        <Failed error={wi.error} />
+      ) : (
+        <>
+          <div className={a.whatIf} role="status">
+            <b>{t("What-if view. Nothing is saved.")}</b>{" "}
+            {t("Gaps: {now} now, {then} with these changes.", { now: gapCount(q.data), then: gapCount(wi.data) })}{" "}
+            <button type="button" className={`${u.button} ${u.quiet}`} onClick={backToLive}>
+              {t("Back to live")}
+            </button>
+          </div>
+          <Board data={wi.data} />
+        </>
       )}
     </>
   );
@@ -211,6 +257,12 @@ function Board({ data }: { data: Arrivals }) {
           )}
         </section>
       </div>
+
+      <section className={u.card} style={{ marginBottom: 16 }}>
+        <h2>{t("Need and on shift")}</h2>
+        <p className={u.hint}>{t("Each block with a flight landing, by airport.")}</p>
+        <LoadTable rows={data.load} slotHours={data.slot_hours} />
+      </section>
 
       <section className={u.card}>
         <h2>{t("Flights")}</h2>
