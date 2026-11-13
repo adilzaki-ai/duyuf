@@ -17,3 +17,15 @@ export function addDays(iso: string, days: number): string {
 export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 }
+
+const KSA_OFFSET_MS = 3 * 3_600_000;
+
+/** An instant written on the Saudi clock: 2026-11-14T21:15:00+03:00 (UTC+3, no daylight saving). */
+export function ksaIso(at: Date): string {
+  return new Date(at.getTime() + KSA_OFFSET_MS).toISOString().slice(0, 19) + "+03:00";
+}
+
+/** The Saudi wall-clock time of an instant, as HH:MM. */
+export function ksaTime(at: Date): string {
+  return new Date(at.getTime() + KSA_OFFSET_MS).toISOString().slice(11, 16);
+}

@@ -23,13 +23,15 @@ KEY_PREFIX = "dyf_"
 
 # What each role may do. Routes ask for a scope, never a role, so a role can
 # be widened here without touching a route.
+# Marking a flight landed moves its pilgrims, so it needs pilgrim:status, which
+# the desk staff at the airport hold; planning flights needs flight:write.
 ROLE_SCOPES: dict[str, frozenset[str]] = {
-    "administrator": frozenset({"group:read", "group:write", "pilgrim:read",
-                                "pilgrim:write", "pilgrim:status", "pilgrim:identity"}),
-    "supervisor": frozenset({"group:read", "group:write", "pilgrim:read",
-                             "pilgrim:write", "pilgrim:status", "pilgrim:identity"}),
-    "staff": frozenset({"group:read", "pilgrim:read", "pilgrim:status"}),
-    "viewer": frozenset({"group:read", "pilgrim:read"}),
+    "administrator": frozenset({"group:read", "group:write", "pilgrim:read", "pilgrim:write",
+                                "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write"}),
+    "supervisor": frozenset({"group:read", "group:write", "pilgrim:read", "pilgrim:write",
+                             "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write"}),
+    "staff": frozenset({"group:read", "pilgrim:read", "pilgrim:status", "flight:read"}),
+    "viewer": frozenset({"group:read", "pilgrim:read", "flight:read"}),
 }
 
 

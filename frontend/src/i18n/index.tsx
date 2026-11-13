@@ -86,6 +86,25 @@ export function fmtDateTime(iso: string): string {
   }).format(new Date(iso));
 }
 
+/** "21:15" on the Saudi clock. */
+export function fmtTime(iso: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "Asia/Riyadh",
+  }).format(new Date(iso));
+}
+
+/** "Urdu" / "الأردية" for "ur"; the code itself if the browser does not know it. */
+export function languageName(code: string): string {
+  try {
+    return new Intl.DisplayNames([current], { type: "language" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 export function countryName(cc: string): string {
   try {
     return new Intl.DisplayNames([current], { type: "region" }).of(cc) ?? cc;

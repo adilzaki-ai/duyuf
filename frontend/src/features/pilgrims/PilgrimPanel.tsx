@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useMovePilgrim, usePilgrim } from "../../api/queries";
 import { useCan } from "../../app/SessionContext";
 import { Failed, Loading, StatusChip, u } from "../../design/ui";
 import { needLabel, statusLabel } from "../../domain/labels";
-import { countryName, fmtDate, fmtDateTime, t } from "../../i18n";
+import { countryName, fmtDate, fmtDateTime, languageName, t } from "../../i18n";
 import p from "./pilgrims.module.css";
 
 /** One pilgrim: who they are, the journey so far, and the next steps allowed. */
@@ -44,6 +45,22 @@ export function PilgrimPanel({ id, onClose }: { id: string; onClose: () => void 
               <span>
                 {q.data.group_name} <span className={u.mono}>{q.data.group_code}</span>
               </span>
+            </li>
+            <li>
+              <span>{t("Arrival flight")}</span>
+              <span>
+                {q.data.arrival_flight_id ? (
+                  <Link to={`/arrivals/${q.data.arrival_flight_id}`} className={u.mono}>
+                    {q.data.flight_number}
+                  </Link>
+                ) : (
+                  "—"
+                )}
+              </span>
+            </li>
+            <li>
+              <span>{t("Language")}</span>
+              <span>{q.data.language ? languageName(q.data.language) : "—"}</span>
             </li>
             <li>
               <span>{t("Nationality")}</span>

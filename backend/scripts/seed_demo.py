@@ -1,7 +1,7 @@
 """Load (or reload) the demonstration operator from sample/demo.json.
 
     .venv/bin/python scripts/seed_demo.py           create the operator if needed, then load
-    .venv/bin/python scripts/seed_demo.py --reset   wipe its groups and pilgrims first
+    .venv/bin/python scripts/seed_demo.py --reset   wipe its groups, pilgrims and flights first
 
 Refuses any operator that is not a demonstration, in the same statement that
 deletes, so a real company's pilgrims can never be wiped by this. The wipe and
@@ -36,9 +36,20 @@ def seed(reset: bool = False) -> dict:
                                 (tid,)).fetchone()["n"]
         if existing and not reset:
             raise SystemExit(f"{op['slug']} already holds {existing} groups; pass --reset to reload")
-        for table in ("pilgrim_event", "pilgrim", "pilgrim_group"):
+        for table in ("pilgrim_event", "pilgrim", "flight_event", "flight", "pilgrim_group"):
             conn.execute(f"""DELETE FROM {table} x USING tenant t
                               WHERE x.tenant_id = t.id AND t.id = %s AND t.is_demo""", (tid,))
+        fid = {}
+        for f in data["flights"]:
+            # Saudi wall-clock time: the session's zone is Asia/Riyadh (core/db.py).
+            fid[f["number"]] = conn.execute(
+                """INSERT INTO flight (tenant_id, number, origin_airport, arrival_airport, scheduled_at, estimated_at)
+                   SELECT %(t)s, %(number)s, %(origin_airport)s, %(arrival_airport)s, s,
+                          CASE WHEN %(delay_minutes)s > 0 THEN s + make_interval(mins => %(delay_minutes)s) END
+                     FROM (SELECT ((current_date + %(day)s) + %(time)s::time)::timestamptz AS s) x
+                   RETURNING id""", {**f, "t": tid}).fetchone()["id"]
+            conn.execute("""INSERT INTO flight_event (tenant_id, flight_id, kind, detail, actor, at)
+                            VALUES (%s, %s, 'created', '{}', 'Demo load', current_date - 20)""", (tid, fid[f["number"]]))
         gid = {}
         for g in data["groups"]:
             gid[g["code"]] = conn.execute(
@@ -52,13 +63,15 @@ def seed(reset: bool = False) -> dict:
             last = p["history"][-1]
             pid = conn.execute(
                 """INSERT INTO pilgrim (tenant_id, group_id, full_name, full_name_ar, gender, date_of_birth,
-                       nationality, passport_no, phone, status, needs, created_at, updated_at)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                       nationality, passport_no, phone, language, arrival_flight_id, status, needs,
+                       created_at, updated_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                            (current_date + %s)::timestamp + make_interval(hours => %s),
                            (current_date + %s)::timestamp + make_interval(hours => %s))
                    RETURNING id""",
                 (tid, gid[p["group_code"]], p["full_name"], p["full_name_ar"], p["gender"], p["date_of_birth"],
-                 p["nationality"], p["passport_no"], p["phone"], p["status"], p["needs"],
+                 p["nationality"], p["passport_no"], p["phone"], p["language"], fid.get(p["flight"]),
+                 p["status"], p["needs"],
                  p["history"][0]["day"], p["history"][0]["hour"], last["day"], last["hour"])).fetchone()["id"]
             for h in p["history"]:
                 conn.execute(
@@ -66,8 +79,9 @@ def seed(reset: bool = False) -> dict:
                        VALUES (%s, %s, %s, %s, 'Demo load',
                                (current_date + %s)::timestamp + make_interval(hours => %s))""",
                     (tid, pid, h["from"], h["to"], h["day"], h["hour"]))
-    counts = {"groups": len(data["groups"]), "pilgrims": len(data["pilgrims"])}
-    print(f"loaded {op['slug']}: {counts['groups']} groups, {counts['pilgrims']} pilgrims")
+    counts = {"groups": len(data["groups"]), "pilgrims": len(data["pilgrims"]), "flights": len(data["flights"])}
+    print(f"loaded {op['slug']}: {counts['groups']} groups, {counts['pilgrims']} pilgrims, "
+          f"{counts['flights']} flights")
     return counts
 
 

@@ -5,6 +5,7 @@ import s from "./shell.module.css";
 
 const NAV = [
   { to: "/", label: "Overview", end: true },
+  { to: "/arrivals", label: "Arrivals", end: false },
   { to: "/groups", label: "Groups", end: false },
   { to: "/pilgrims", label: "Pilgrims", end: false },
 ];

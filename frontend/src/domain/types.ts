@@ -8,7 +8,9 @@ export type Scope =
   | "pilgrim:read"
   | "pilgrim:write"
   | "pilgrim:status"
-  | "pilgrim:identity";
+  | "pilgrim:identity"
+  | "flight:read"
+  | "flight:write";
 
 export interface Me {
   tenant: { id: string; slug: string; name: string; name_ar: string | null; is_demo: boolean };
@@ -45,9 +47,13 @@ export interface Pilgrim {
   /** masked to "•••• 1234" without pilgrim:identity */
   passport_no: string;
   phone: string | null;
+  /** ISO 639-1, e.g. "ur"; null when not recorded */
+  language: string | null;
   status: Status;
   needs: Need[];
   updated_at: string;
+  arrival_flight_id: string | null;
+  flight_number: string | null;
   /** the moves the platform will accept from here */
   allowed: Status[];
 }
@@ -87,8 +93,106 @@ export interface Overview {
 
 export interface PilgrimFilter {
   group_id?: string;
+  flight_id?: string;
   status?: Status;
   q?: string;
   limit?: number;
   offset?: number;
 }
+
+/** on_time · delayed · due (its time has passed and nobody confirmed it) · landed */
+export type FlightState = "on_time" | "delayed" | "due" | "landed";
+
+export interface LanguageNeed {
+  language: string | null;
+  pilgrims: number;
+  interpreters: number;
+}
+
+/** What a flight's pilgrims will need on the ground. Rules in domain/brief.ts. */
+export interface Brief {
+  pilgrims: number;
+  over_75: number;
+  unknown_age: number;
+  wheelchair: number;
+  medical: number;
+  dietary: number;
+  minor_alone: number;
+  no_visa: number;
+  buses: number;
+  interpreters: number;
+  languages: LanguageNeed[];
+}
+
+export interface FlightGroup {
+  id: string;
+  code: string;
+  name: string;
+  pilgrims: number;
+}
+
+export interface Flight {
+  id: string;
+  number: string;
+  origin_airport: string;
+  arrival_airport: string;
+  scheduled_at: string;
+  estimated_at: string | null;
+  landed_at: string | null;
+  /** the estimate when there is one, else the schedule */
+  expected_at: string;
+  delay_minutes: number;
+  state: FlightState;
+  note: string | null;
+  groups: FlightGroup[];
+  brief: Brief;
+}
+
+export type FlightEvent =
+  | { kind: "created"; detail: Record<string, unknown>; actor: string; at: string }
+  | { kind: "expected"; detail: { expected_at: string | null }; actor: string; at: string }
+  | { kind: "added"; detail: { added: number; group?: string }; actor: string; at: string }
+  | { kind: "landed"; detail: { arrived: number; no_visa: number }; actor: string; at: string };
+
+export interface FlightDetail extends Flight {
+  history: FlightEvent[];
+}
+
+export interface Wave {
+  start: string;
+  by_airport: Record<string, number>;
+}
+
+export interface UnplannedGroup {
+  id: string;
+  code: string;
+  name: string;
+  arrival_date: string;
+  without_flight: number;
+}
+
+export interface Arrivals {
+  now: string;
+  hours: number;
+  slot_hours: number;
+  flights: Flight[];
+  waves: Wave[];
+  unplanned: UnplannedGroup[];
+}
+
+export interface NewFlight {
+  number: string;
+  origin_airport: string;
+  arrival_airport: string;
+  /** with its zone, e.g. 2026-11-14T21:15:00+03:00 */
+  scheduled_at: string;
+  note?: string;
+}
+
+export interface FlightChange {
+  /** null puts the flight back on its schedule */
+  estimated_at?: string | null;
+  note?: string | null;
+}
+
+export type Assignment = { group_id: string } | { pilgrim_ids: string[] };

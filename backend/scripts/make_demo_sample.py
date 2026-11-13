@@ -65,6 +65,30 @@ GROUPS = [
     ("H-PK-0007", "Karachi Hajj", "hajj", "1448", "PK", 185, 220, 40, "registered"),
     ("H-IN-0012", "Hyderabad Hajj", "hajj", "1448", "IN", 184, 224, 38, "registered"),
     ("H-JO-0003", "Amman Hajj", "hajj", "1448", "JO", 190, 212, 25, "registered"),
+    # Added for the arrivals board, at the end so the people above stay the same:
+    # groups landing in the next two days, on the flights below.
+    ("U-PK-0322", "Karachi Umrah", "umrah", "1448", "PK", 0, 14, 48, "visa_issued"),
+    ("U-ID-0430", "Makassar Umrah", "umrah", "1448", "ID", 1, 13, 44, "visa_issued"),
+    ("U-IN-0118", "Hyderabad Umrah", "umrah", "1448", "IN", 2, 16, 34, "visa_issued"),
+    ("U-NG-0095", "Abuja Umrah", "umrah", "1448", "NG", 2, 17, 26, "visa_mixed"),
+]
+
+# The language each pilgrim speaks, by passport country (ISO 639-1). Nigeria
+# alternates Hausa and English by position, so no random draw is spent on it.
+LANGUAGE = {"ID": "id", "PK": "ur", "IN": "ur", "EG": "ar", "JO": "ar", "TR": "tr",
+            "MY": "ms", "NG": "ha", "BD": "bn", "GB": "en"}
+
+# Invented flights, on real airline codes. number, from, to, day (from today),
+# Saudi time, minutes late, and which pilgrims: (group, first, last) by position.
+# Spread through the day so a board opened at any hour has flights on it.
+FLIGHTS = [
+    ("PK 743", "KHI", "JED", 0, "05:40", 0, [("U-PK-0322", 0, 24)]),
+    ("SV 705", "KHI", "JED", 0, "21:15", 0, [("U-PK-0322", 24, 48)]),
+    ("MS 683", "CAI", "JED", 1, "04:10", 0, [("U-EG-0207", 0, 30)]),
+    ("GA 980", "UPG", "MED", 1, "09:25", 95, [("U-ID-0430", 0, 44)]),
+    ("6E 63", "HYD", "JED", 2, "02:50", 0, [("U-IN-0118", 0, 34)]),
+    ("SV 3304", "ABV", "MED", 2, "13:05", 0, [("U-NG-0095", 0, 26)]),
+    ("TK 92", "IST", "MED", 3, "07:00", 20, [("U-TR-0155", 0, 26)]),
 ]
 
 PATH = ["registered", "visa_issued", "arrived", "in_makkah", "in_madinah", "departed"]
@@ -124,19 +148,23 @@ def main() -> None:
                 status = "departed"
                 steps = PATH[: PATH.index(stage) + 1] + ["departed"]
             hist = history(steps, arrive, depart, early_exit=early)
+            flight = next((f[0] for f in FLIGHTS for g, a, b in f[6] if g == code and a <= i < b), None)
             pilgrims.append({
                 "group_code": code, "full_name": f"{first} {last}",
                 "full_name_ar": f"{first_ar} {last_ar}" if first_ar and last_ar else None,
                 "gender": gender, "date_of_birth": born, "nationality": cc, "passport_no": passport,
                 "phone": None, "status": status, "needs": needs, "history": hist,
+                "language": "en" if cc == "NG" and i % 3 == 0 else LANGUAGE[cc], "flight": flight,
             })
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({
         "operator": {"slug": "duyuf-demo", "name": "Duyuf (demonstration)", "name_ar": "ضيوف (عرض توضيحي)"},
         "note": "Invented people. Passport numbers, names and phones are made up.",
         "groups": groups, "pilgrims": pilgrims,
+        "flights": [{"number": n, "origin_airport": o, "arrival_airport": a, "day": d, "time": t,
+                     "delay_minutes": late} for n, o, a, d, t, late, _ in FLIGHTS],
     }, ensure_ascii=False, indent=1) + "\n")
-    print(f"wrote {OUT} — {len(groups)} groups, {len(pilgrims)} pilgrims")
+    print(f"wrote {OUT} — {len(groups)} groups, {len(pilgrims)} pilgrims, {len(FLIGHTS)} flights")
 
 
 if __name__ == "__main__":

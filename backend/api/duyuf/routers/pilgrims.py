@@ -22,7 +22,11 @@ NEEDS = ("wheelchair", "medical", "elderly", "dietary", "unaccompanied_minor")
 
 _COLS = """p.id::text, p.group_id::text, g.code AS group_code, g.name AS group_name,
            p.full_name, p.full_name_ar, p.gender, p.date_of_birth, p.nationality,
-           p.passport_no, p.phone, p.status, p.needs, p.updated_at"""
+           p.passport_no, p.phone, p.language, p.status, p.needs, p.updated_at,
+           p.arrival_flight_id::text, fl.number AS flight_number"""
+_FROM = """pilgrim p JOIN pilgrim_group g ON g.id = p.group_id
+           LEFT JOIN flight fl ON fl.id = p.arrival_flight_id"""
+_LANGUAGE = r"^[a-z]{2}$"
 
 
 def _shown(row: dict, who: Identity) -> dict:
@@ -44,6 +48,7 @@ class PilgrimIn(BaseModel):
     nationality: str = Field(pattern=r"^[A-Z]{2}$")
     passport_no: str = Field(min_length=5, max_length=20)
     phone: str | None = None
+    language: str | None = Field(default=None, pattern=_LANGUAGE)
     needs: list[Literal[NEEDS]] = []  # type: ignore[valid-type]
 
 
@@ -52,6 +57,10 @@ class PilgrimPatch(BaseModel):
     full_name: str | None = Field(default=None, min_length=1)
     full_name_ar: str | None = None
     phone: str | None = None
+    language: str | None = Field(default=None, pattern=_LANGUAGE)
+    # Only null, which takes the pilgrim off their arrival flight. Putting one
+    # on is POST /v1/flights/{id}/pilgrims, which checks they have not landed.
+    arrival_flight_id: None = None
     needs: list[Literal[NEEDS]] | None = None  # type: ignore[valid-type]
 
 
@@ -63,6 +72,7 @@ class StatusMove(BaseModel):
 @router.get("")
 def list_pilgrims(
     group_id: str | None = None,
+    flight_id: str | None = None,
     status: str | None = None,
     q: str | None = Query(default=None, description="name or passport"),
     limit: int = Query(default=100, ge=1, le=500),
@@ -73,6 +83,9 @@ def list_pilgrims(
     if group_id:
         where.append("p.group_id = %s")
         params.append(group_id)
+    if flight_id:
+        where.append("p.arrival_flight_id = %s")
+        params.append(flight_id)
     if status:
         where.append("p.status = %s")
         params.append(status)
@@ -89,7 +102,7 @@ def list_pilgrims(
     with tenant_session(who.tenant_id) as conn:
         total = conn.execute(f"SELECT count(*)::int AS n FROM pilgrim p {clause}", params).fetchone()["n"]
         rows = conn.execute(
-            f"""SELECT {_COLS} FROM pilgrim p JOIN pilgrim_group g ON g.id = p.group_id
+            f"""SELECT {_COLS} FROM {_FROM}
                 {clause} ORDER BY g.arrival_date NULLS LAST, g.code, p.full_name, p.id
                 LIMIT %s OFFSET %s""",
             [*params, limit, offset]).fetchall()
@@ -97,8 +110,7 @@ def list_pilgrims(
 
 
 def _one(conn, pilgrim_id: str, who: Identity) -> dict:
-    row = conn.execute(f"SELECT {_COLS} FROM pilgrim p JOIN pilgrim_group g ON g.id = p.group_id "
-                       "WHERE p.id = %s", (pilgrim_id,)).fetchone()
+    row = conn.execute(f"SELECT {_COLS} FROM {_FROM} WHERE p.id = %s", (pilgrim_id,)).fetchone()
     if not row:
         raise HTTPException(404, "no such pilgrim")
     out = _shown(row, who)
@@ -119,9 +131,9 @@ def create_pilgrim(body: PilgrimIn, who: Identity = Depends(require("pilgrim:wri
     with tenant_session(who.tenant_id) as conn:
         pid = conn.execute(
             """INSERT INTO pilgrim (group_id, full_name, full_name_ar, gender, date_of_birth,
-                   nationality, passport_no, phone, needs)
+                   nationality, passport_no, phone, language, needs)
                VALUES (%(group_id)s, %(full_name)s, %(full_name_ar)s, %(gender)s, %(date_of_birth)s,
-                   %(nationality)s, upper(%(passport_no)s), %(phone)s, %(needs)s)
+                   %(nationality)s, upper(%(passport_no)s), %(phone)s, %(language)s, %(needs)s)
                RETURNING id::text""", body.model_dump()).fetchone()["id"]
         conn.execute("INSERT INTO pilgrim_event (pilgrim_id, to_status, actor) VALUES (%s, 'registered', %s)",
                      (pid, who.display_name))
