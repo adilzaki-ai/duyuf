@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { MockSource } from "../../api/mockSource";
+import type { AnalystAnswer } from "../../domain/types";
 import { App } from "../App";
 
 const start = async () => {
@@ -143,5 +144,34 @@ describe("Duyuf on the sample", () => {
     await userEvent.click(screen.getByRole("button", { name: "Raise incident" }));
     const opened = await screen.findByRole("complementary");
     expect(await within(opened).findByText("Lost their bag at the hotel.")).toBeInTheDocument();
+  });
+
+  it("says plainly that the analyst needs the platform, and sends nothing in sample mode", async () => {
+    render(<App start={start} />);
+    await userEvent.click(await screen.findByRole("link", { name: "Analyst" }));
+    expect(await screen.findByText("The analyst is not available here")).toBeInTheDocument();
+    expect(screen.getByText("It needs the platform. Sample mode does not send questions out.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Your question" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Ask" })).toBeDisabled();
+  });
+
+  it("shows an answer with its chart and how it was worked out", async () => {
+    const source = new MockSource(new Date("2026-11-12T09:00:00+03:00"));
+    source.analystStatus = async () => ({ ready: true, model: "claude-opus-5-5" });
+    source.ask = async (question: string): Promise<AnalystAnswer> => ({
+      id: "a1", asked_by: "Sample viewer", question, outcome: "answered",
+      answer: "**74** pilgrims are in the Kingdom.\n\n- Pakistan 35\n- Indonesia 39\n\nSuggested action: none.",
+      sources: [{ tool: "count_pilgrims", input: { group_by: ["nationality"] }, result: { pilgrims: 74 } }],
+      charts: [{ title: "In the Kingdom", labels: ["Pakistan", "Indonesia"], values: [35, 39], unit: null }],
+      model: "claude-opus-5-5", input_tokens: 1, output_tokens: 1, seconds: 12.3, asked_at: "2026-11-12T09:01:00+03:00",
+    });
+    render(<App start={async () => ({ source, me: await source.me() })} />);
+    await userEvent.click(await screen.findByRole("link", { name: "Analyst" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Which flights are short of wheelchairs or interpreters?" }));
+    expect(await screen.findByText("Pakistan 35")).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "In the Kingdom" })).toBeInTheDocument();
+    expect(screen.getByText("How this was worked out (1 looks at the data)")).toBeInTheDocument();
+    expect(screen.getByText("Counted pilgrims")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Ask a follow-up" })).toBeEnabled();
   });
 });

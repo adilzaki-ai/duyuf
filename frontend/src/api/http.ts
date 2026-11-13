@@ -31,8 +31,8 @@ export class HttpClient {
     return this.request<T>("GET", path, query);
   }
 
-  post<T>(path: string, body?: unknown) {
-    return this.request<T>("POST", path, undefined, body);
+  post<T>(path: string, body?: unknown, timeoutMs?: number) {
+    return this.request<T>("POST", path, undefined, body, timeoutMs);
   }
 
   patch<T>(path: string, body?: unknown) {
@@ -43,13 +43,13 @@ export class HttpClient {
     return this.request<void>("DELETE", path);
   }
 
-  private async request<T>(method: string, path: string, query?: Query, body?: unknown): Promise<T> {
+  private async request<T>(method: string, path: string, query?: Query, body?: unknown, timeoutMs?: number): Promise<T> {
     /* Resolved against the page, so a base of "/" means "wherever this app was loaded from". */
     const url = new URL(this.base + path, globalThis.location?.href);
     for (const [k, v] of Object.entries(query ?? {})) if (v != null && v !== "") url.searchParams.set(k, String(v));
     const headers = { ...this.headers, ...(body !== undefined ? { "Content-Type": "application/json" } : {}) };
     const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), this.timeoutMs);
+    const timer = setTimeout(() => ctl.abort(), timeoutMs ?? this.timeoutMs);
     let res: Response;
     try {
       res = await this.fetchImpl(url, {

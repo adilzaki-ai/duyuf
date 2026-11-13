@@ -218,3 +218,24 @@ export function useIncidentStep(id: string) {
     },
   });
 }
+
+export function useAnalystStatus() {
+  const { source } = useSession();
+  return useQuery({ queryKey: ["analyst-status"], queryFn: () => source.analystStatus(), staleTime: 300_000 });
+}
+
+export function useAnalystRecent() {
+  const { source } = useSession();
+  return useQuery({ queryKey: ["analyst-recent"], queryFn: () => source.analystRecent() });
+}
+
+/** One question. Not retried: each attempt costs a call to the model. */
+export function useAsk() {
+  const { source } = useSession();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { question: string; history: { question: string; answer: string }[] }) =>
+      source.ask(v.question, v.history),
+    onSettled: () => void qc.invalidateQueries({ queryKey: ["analyst-recent"] }),
+  });
+}

@@ -107,6 +107,29 @@ first, and counts the median time to a team and to resolution over the last
 seven days. Every step is kept with who took it and when; nothing is deleted.
 Moves: `incidents/flow.py` ↔ `domain/incidents.ts`, pinned by a test.
 
+## The AI analyst
+
+Staff ask questions in Arabic or English (*Analyst*) and get answers from the
+operator's live totals, with a chart where it helps and the data each answer
+came from. It runs Claude Opus 5.5 from the backend, with refusals retried on
+Anthropic's recommended fallback model.
+
+**It sees totals only.** Its tools return counts and operational facts: no
+pilgrim names, passports, birth dates or phones, no leader names or phones,
+no incident descriptions. A test runs every tool over the demo and fails if
+any of those appear. Every question, answer and the data behind it is kept
+(`analyst_question`). Answers are advice; a person decides.
+
+To turn it on, put the key in `backend/.env.local` (git-ignored; the run
+script loads it) and restart the backend:
+
+```bash
+echo 'ANTHROPIC_API_KEY=sk-ant-…' > backend/.env.local
+```
+
+Without a key the screen says so and nothing is sent. Sample mode never sends
+questions out.
+
 ## Tests
 
 ```bash

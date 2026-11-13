@@ -1,5 +1,7 @@
 import type { Status } from "../domain/journey";
 import type {
+  AnalystAnswer,
+  AnalystStatus,
   Arrivals,
   Assignment,
   FlightChange,
@@ -68,6 +70,11 @@ export interface DataSource {
   resolveIncident(id: string, resolution: string): Promise<IncidentDetail>;
   reopenIncident(id: string, note: string): Promise<IncidentDetail>;
   noteIncident(id: string, note: string): Promise<IncidentDetail>;
+  /** Whether the server can reach the AI analyst at all. */
+  analystStatus(): Promise<AnalystStatus>;
+  /** A question about this operator's totals, with the last few turns for follow-ups. Can take a minute. */
+  ask(question: string, history: { question: string; answer: string }[]): Promise<AnalystAnswer>;
+  analystRecent(): Promise<AnalystAnswer[]>;
 }
 
 /** A refusal or failure, carrying the platform's own words so the screen can show them. */

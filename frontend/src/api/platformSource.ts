@@ -1,5 +1,7 @@
 import type { Status } from "../domain/journey";
 import type {
+  AnalystAnswer,
+  AnalystStatus,
   Arrivals,
   Assignment,
   FlightChange,
@@ -156,5 +158,18 @@ export class PlatformSource implements DataSource {
 
   noteIncident(id: string, note: string) {
     return this.http.post<IncidentDetail>(`/v1/incidents/${encodeURIComponent(id)}/notes`, { note });
+  }
+
+  analystStatus() {
+    return this.http.get<AnalystStatus>("/v1/analyst/status");
+  }
+
+  /* a question runs several rounds with the model: allow three minutes, not the usual fifteen seconds */
+  ask(question: string, history: { question: string; answer: string }[]) {
+    return this.http.post<AnalystAnswer>("/v1/analyst/ask", { question, history }, 180_000);
+  }
+
+  async analystRecent() {
+    return (await this.http.get<{ items: AnalystAnswer[] }>("/v1/analyst/recent")).items;
   }
 }
