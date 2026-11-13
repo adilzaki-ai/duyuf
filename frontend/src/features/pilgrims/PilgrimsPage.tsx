@@ -10,8 +10,8 @@ import p from "./pilgrims.module.css";
 
 const PAGE = 100;
 
-/** Search, filter and open pilgrims. On its own page, and under a group with that group fixed. */
-export function PilgrimBrowser({ groupId }: { groupId?: string }) {
+/** Search, filter and open pilgrims. On its own page, under a group with that group fixed, and under a flight. */
+export function PilgrimBrowser({ groupId, flightId }: { groupId?: string; flightId?: string }) {
   const seesPassports = useCan("pilgrim:identity");
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<Status | "">("");
@@ -23,6 +23,7 @@ export function PilgrimBrowser({ groupId }: { groupId?: string }) {
     q: q.trim() || undefined,
     status: status || undefined,
     group_id: group || undefined,
+    flight_id: flightId,
     limit,
   });
 

@@ -33,4 +33,20 @@ describe("Duyuf on the sample", () => {
     expect(await within(panel).findAllByText("Visa issued")).not.toHaveLength(0);
     expect(await within(panel).findByRole("button", { name: "Arrived" })).toBeInTheDocument();
   });
+
+  it("shows the arrivals board, opens a flight and marks it landed", async () => {
+    render(<App start={start} />);
+    await userEvent.click(await screen.findByRole("link", { name: "Arrivals" }));
+    expect(await screen.findByRole("heading", { name: "Arrival wave" })).toBeInTheDocument();
+    expect(screen.getByText("Needs attention")).toBeInTheDocument();
+    const attention = screen.getByText("should have landed. Confirm it.", { exact: false }).closest("li")!;
+    expect(attention).toHaveTextContent("PK 743");
+    await userEvent.click(screen.getAllByRole("link", { name: "MS 683" })[0]);
+    expect(await screen.findByRole("heading", { name: "MS 683" })).toBeInTheDocument();
+    expect(screen.getByText("1 with no visa yet. They will not move to Arrived.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Mark landed" }));
+    await userEvent.click(screen.getByRole("button", { name: "Yes, MS 683 is down" }));
+    expect(await screen.findByText(/29 moved to Arrived\./)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mark landed" })).not.toBeInTheDocument();
+  });
 });

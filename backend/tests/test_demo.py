@@ -40,3 +40,17 @@ def test_a_real_operator_is_never_wiped(op_a):
     with pytest.raises(Exception, match="is_demo is fixed"):
         with owner_session() as conn:
             conn.execute("UPDATE tenant SET is_demo = true WHERE slug = 'duyuf-demo-real'")
+
+
+def test_the_sample_flights_fit_their_groups():
+    data = json.loads(SAMPLE.read_text())
+    flights = {f["number"]: f for f in data["flights"]}
+    groups = {g["code"]: g for g in data["groups"]}
+    for p in data["pilgrims"]:
+        if p["flight"] is None:
+            continue
+        f = flights[p["flight"]]
+        # lands the day its group arrives, carrying only pilgrims not yet in the Kingdom
+        assert f["day"] == groups[p["group_code"]]["arrive_in_days"], p["full_name"]
+        assert p["status"] in ("registered", "visa_issued"), p["full_name"]
+    assert all(p["language"] for p in data["pilgrims"])

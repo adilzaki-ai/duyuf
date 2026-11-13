@@ -1,5 +1,17 @@
 import type { Status } from "../domain/journey";
-import type { Group, Me, Overview, Pilgrim, PilgrimDetail, PilgrimFilter } from "../domain/types";
+import type {
+  Arrivals,
+  Assignment,
+  FlightChange,
+  FlightDetail,
+  Group,
+  Me,
+  NewFlight,
+  Overview,
+  Pilgrim,
+  PilgrimDetail,
+  PilgrimFilter,
+} from "../domain/types";
 
 /**
  * Everything the screens read and write, behind one interface with two
@@ -16,6 +28,14 @@ export interface DataSource {
   pilgrims(filter: PilgrimFilter): Promise<{ items: Pilgrim[]; total: number }>;
   pilgrim(id: string): Promise<PilgrimDetail>;
   movePilgrim(id: string, to: Status, note?: string): Promise<PilgrimDetail>;
+  /** Flights landing from a little before now to `hours` ahead, with the wave and who has no flight. */
+  arrivals(hours: number): Promise<Arrivals>;
+  flight(id: string): Promise<FlightDetail>;
+  createFlight(f: NewFlight): Promise<FlightDetail>;
+  updateFlight(id: string, change: FlightChange): Promise<FlightDetail>;
+  assignToFlight(id: string, who: Assignment): Promise<FlightDetail & { added: number }>;
+  /** Moves everyone on it with a visa to "arrived"; says how many moved and how many had no visa. */
+  landFlight(id: string, note?: string): Promise<FlightDetail & { arrived: number; no_visa: number }>;
 }
 
 /** A refusal or failure, carrying the platform's own words so the screen can show them. */

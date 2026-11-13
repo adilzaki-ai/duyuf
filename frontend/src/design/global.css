@@ -25,6 +25,11 @@
   --st-in_madinah: #2f9a6f;
   --st-departed: #7b6f8f;
 
+  /* the arrival wave, by airport: Jeddah, Madinah, others (validated categorical slots) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+
   font-family: "Inter", "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 15px;
   line-height: 1.5;
@@ -44,6 +49,9 @@
     --brand: #0c3f33;
     --on-brand: #efe9da;
     --gold-soft: #3d331c;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
   }
 }
 
