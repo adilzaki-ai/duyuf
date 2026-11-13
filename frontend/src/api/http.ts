@@ -18,7 +18,8 @@ export class HttpClient {
   private readonly base: string;
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number;
-  private readonly headers: Record<string, string> = { Accept: "application/json" };
+  /* X-Duyuf-Client: the platform takes changes made with a session cookie only from its own web app */
+  private readonly headers: Record<string, string> = { Accept: "application/json", "X-Duyuf-Client": "web" };
 
   constructor(opts: HttpOptions) {
     this.base = opts.baseUrl.replace(/\/+$/, "");

@@ -18,7 +18,10 @@ import type {
   NewGroup,
   NewPilgrim,
   NewShift,
+  NewStaff,
   PilgrimChange,
+  StaffChange,
+  StaffMember,
   Shift,
   WhatIf,
   Overview,
@@ -171,5 +174,29 @@ export class PlatformSource implements DataSource {
 
   async analystRecent() {
     return (await this.http.get<{ items: AnalystAnswer[] }>("/v1/analyst/recent")).items;
+  }
+
+  signIn(email: string, password: string) {
+    return this.http.post<Me>("/v1/auth/sign-in", { email, password });
+  }
+
+  signOut() {
+    return this.http.post<void>("/v1/auth/sign-out");
+  }
+
+  changePassword(current: string, next: string) {
+    return this.http.post<Me>("/v1/auth/password", { current, new: next });
+  }
+
+  async staff() {
+    return (await this.http.get<{ items: StaffMember[] }>("/v1/staff")).items;
+  }
+
+  addStaff(s: NewStaff) {
+    return this.http.post<StaffMember>("/v1/staff", s);
+  }
+
+  updateStaff(id: string, change: StaffChange) {
+    return this.http.patch<StaffMember>(`/v1/staff/${encodeURIComponent(id)}`, change);
   }
 }

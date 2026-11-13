@@ -19,9 +19,10 @@ from fastapi.responses import JSONResponse
 
 from .core.auth import Identity, identity
 from .core.db import PoolUnavailable, healthy
-from .routers import analyst, arrivals, groups, imports, incidents, overview, pilgrims, resources
+from .routers import (analyst, arrivals, groups, imports, incidents, overview, pilgrims, resources,
+                      session, staff)
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 
 app = FastAPI(title="Duyuf Platform API", version=VERSION,
               description="Hajj and Umrah operations: groups, pilgrims, journeys, arrivals.")
@@ -61,7 +62,7 @@ _origins = [o.strip().rstrip("/") for o in os.environ.get("DUYUF_CORS_ORIGINS", 
 if _origins:
     app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_credentials=True,
                        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-                       allow_headers=["Authorization", "Content-Type", "X-Duyuf-Tenant"], max_age=600)
+                       allow_headers=["Authorization", "Content-Type", "X-Duyuf-Tenant", "X-Duyuf-Client"], max_age=600)
 
 app.include_router(overview.router)
 app.include_router(groups.router)
@@ -71,6 +72,8 @@ app.include_router(arrivals.router)
 app.include_router(resources.router)
 app.include_router(incidents.router)
 app.include_router(analyst.router)
+app.include_router(session.router)
+app.include_router(staff.router)
 
 
 @app.get("/health", tags=["platform"])
@@ -82,9 +85,5 @@ def health():
 
 @app.get("/v1/me", tags=["platform"])
 def me(who: Identity = Depends(identity)):
-    return {
-        "tenant": {"id": who.tenant_id, "slug": who.tenant_slug, "name": who.tenant_name,
-                   "name_ar": who.tenant_name_ar, "is_demo": who.is_demo},
-        "principal": {"id": who.principal_id, "name": who.display_name, "role": who.role},
-        "scopes": sorted(who.scopes),
-    }
+    """Who is signed in. Open even while a new password is due, so the web app can ask for one."""
+    return session.me_payload(who)

@@ -1,5 +1,6 @@
-import { NavLink, Outlet } from "react-router-dom";
-import { useSession } from "../app/SessionContext";
+import { Link, NavLink, Outlet } from "react-router-dom";
+import { useCan, useSession } from "../app/SessionContext";
+import { roleLabel } from "../features/account/StaffPage";
 import { t, useLang } from "../i18n";
 import s from "./shell.module.css";
 
@@ -13,7 +14,9 @@ const NAV = [
 ];
 
 export function Shell() {
-  const { source, me, fallbackReason } = useSession();
+  const { source, me, fallbackReason, signedOut } = useSession();
+  const canManage = useCan("staff:manage");
+  const nav = canManage ? [...NAV, { to: "/staff", label: "Staff", end: false }] : NAV;
   const { lang, setLang } = useLang();
   const operator = lang === "ar" && me.tenant.name_ar ? me.tenant.name_ar : me.tenant.name;
 
@@ -26,14 +29,39 @@ export function Shell() {
           <span className={s.operator}>{operator}</span>
         </div>
         <nav className={s.nav}>
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? s.active : undefined)}>
               {t(n.label)}
             </NavLink>
           ))}
         </nav>
         <div className={s.tools}>
-          <span className={s.who}>{me.principal.name}</span>
+          <details className={s.menu}>
+            <summary aria-label={t("Account")}>
+              <span className={s.who}>{me.principal.name}</span>
+              <span className={s.initial} aria-hidden="true">
+                {me.principal.name.slice(0, 1)}
+              </span>
+            </summary>
+            <div className={s.menuPanel}>
+              <b>{me.principal.name}</b>
+              <span className={s.menuSub}>
+                {roleLabel(me.principal.role)}
+                {me.principal.email && (
+                  <>
+                    {" · "}
+                    <span dir="ltr">{me.principal.email}</span>
+                  </>
+                )}
+              </span>
+              <Link to="/account">{t("Your account")}</Link>
+              {me.via === "session" && (
+                <button type="button" onClick={() => void source.signOut().finally(signedOut)}>
+                  {t("Sign out")}
+                </button>
+              )}
+            </div>
+          </details>
           <button
             type="button"
             className={s.lang}
