@@ -28,13 +28,20 @@ cd frontend && npm run dev
 
 It runs beside Sky Logics (5173 / 8000) without clashing.
 
-The web app signs in with the key in `frontend/.env.local` (not committed). For
-a new one:
+Staff sign in with their own email and password. The demo operator has one
+login per role, all with the password `duyuf-demo-1448` (invented people,
+demonstration operators only; set `DUYUF_DEMO_PASSWORD` to change it):
 
-```bash
-cd backend
-.venv/bin/python scripts/issue_key.py --tenant duyuf-demo --name "local web" --expires-days 90
-```
+| Email | Role |
+|---|---|
+| amina@duyuf.demo | administrator |
+| omar@duyuf.demo | supervisor |
+| desk@duyuf.demo | desk staff |
+| viewer@duyuf.demo | viewer |
+
+To sign in on this Mac, leave `VITE_DUYUF_API_KEY` empty in
+`frontend/.env.local` and restart `npm run dev`. With a key there, the web app
+skips sign in and acts as that key's person (handy for development).
 
 With no backend running, the web app falls back to the sample and says so in a
 banner. `VITE_DATA_SOURCE=mock` forces the sample.
@@ -59,8 +66,18 @@ the web app's sample mode then show the same thing.
 ```bash
 cd backend
 .venv/bin/python scripts/provision.py --slug al-noor --name "Al Noor Travel" --name-ar "النور للسفر"
-.venv/bin/python scripts/issue_key.py --tenant al-noor --name "office" --principal admin
+.venv/bin/python scripts/set_login.py --tenant al-noor --email amina@alnoor.sa --name "Amina Al-Harbi"
 ```
+
+`set_login.py` gives the operator its first administrator and prints a
+password once, to be changed at first sign in. That administrator adds the rest
+of the staff on the *Staff* screen. API keys (`issue_key.py`) remain for
+integrations.
+
+Sessions are an HttpOnly cookie for 12 hours (`DUYUF_SESSION_HOURS`); set
+`DUYUF_COOKIE_SECURE=1` behind HTTPS. Five wrong passwords in 15 minutes lock
+that email for the rest of the 15 minutes. Switching someone off, or resetting
+their password, signs them out everywhere.
 
 Roles: administrator, supervisor, staff, viewer. Staff and viewers see only the
 last four characters of a passport and no birth date (Saudi PDPL).

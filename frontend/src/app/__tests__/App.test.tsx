@@ -1,8 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { DataSourceError } from "../../api/dataSource";
 import { MockSource } from "../../api/mockSource";
-import type { AnalystAnswer } from "../../domain/types";
+import type { AnalystAnswer, Me } from "../../domain/types";
 import { App } from "../App";
 
 const start = async () => {
@@ -173,5 +174,45 @@ describe("Duyuf on the sample", () => {
     expect(screen.getByText("How this was worked out (1 looks at the data)")).toBeInTheDocument();
     expect(screen.getByText("Counted pilgrims")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Ask a follow-up" })).toBeEnabled();
+  });
+
+  it("asks for a sign in when the platform has no session, then a new password, then opens", async () => {
+    const source = new MockSource(new Date("2026-11-12T09:00:00+03:00"));
+    const sampleMe = await source.me();
+    let mustChange = true;
+    source.signIn = async (email: string, password: string): Promise<Me> => {
+      if (password !== "handed-over-1") throw new DataSourceError("that email and password do not match", { status: 401 });
+      return { ...sampleMe, via: "session" as const, principal: { id: "p1", name: "Arrivals desk", role: "staff", email, must_change_password: mustChange } };
+    };
+    source.changePassword = async (): Promise<Me> => {
+      mustChange = false;
+      return { ...sampleMe, via: "session" as const, principal: { id: "p1", name: "Arrivals desk", role: "staff", email: "desk@x.sa", must_change_password: false } };
+    };
+    render(<App start={async () => ({ source, me: null })} />);
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Email"), "desk@x.sa");
+    await userEvent.type(screen.getByLabelText("Password"), "wrong");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("that email and password do not match");
+    await userEvent.type(screen.getByLabelText("Password"), "handed-over-1");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByRole("heading", { name: "Choose a password" })).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Password you were given"), "handed-over-1");
+    await userEvent.type(screen.getByLabelText("New password"), "my-own-pass-1448");
+    await userEvent.type(screen.getByLabelText("New password again"), "my-own-pass-1448");
+    await userEvent.click(screen.getByRole("button", { name: "Save password" }));
+    expect(await screen.findByRole("heading", { name: "Overview" })).toBeInTheDocument();
+    expect(screen.getAllByText("Arrivals desk").length).toBeGreaterThan(0);
+  });
+
+  it("lets an administrator add a person and hands over a password once", async () => {
+    render(<App start={start} />);
+    await userEvent.click(await screen.findByRole("link", { name: "Staff" }));
+    expect(await screen.findByText("Amina Al-Harbi")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Name"), "Night desk");
+    await userEvent.type(screen.getByLabelText("Email"), "night@duyuf.demo");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    expect(await screen.findByText(/Give Night desk this password/)).toBeInTheDocument();
+    expect(await screen.findByText("night@duyuf.demo")).toBeInTheDocument();
   });
 });

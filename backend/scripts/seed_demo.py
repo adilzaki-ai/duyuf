@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import sys
 
@@ -21,6 +22,18 @@ sys.path.insert(0, str(ROOT / "backend" / "scripts"))
 
 from duyuf.core.db import owner_session  # noqa: E402
 from provision import provision  # noqa: E402
+from set_login import set_login  # noqa: E402
+
+# The demo operator's staff, one per role, so each role can be tried. Invented
+# people with a shared password: the demo holds invented pilgrims only, and
+# these accounts exist on demonstration operators only (seed refuses others).
+DEMO_STAFF = [
+    ("amina@duyuf.demo", "Amina Al-Harbi", "administrator"),
+    ("omar@duyuf.demo", "Omar Siddiqui", "supervisor"),
+    ("desk@duyuf.demo", "Arrivals desk", "staff"),
+    ("viewer@duyuf.demo", "Ministry visitor", "viewer"),
+]
+DEMO_PASSWORD = os.environ.get("DUYUF_DEMO_PASSWORD", "duyuf-demo-1448")
 
 SAMPLE = ROOT / "sample" / "demo.json"
 
@@ -112,6 +125,8 @@ def seed(reset: bool = False) -> dict:
             for kind, team, note, actor, at in steps:
                 conn.execute(f"""INSERT INTO incident_event (tenant_id, incident_id, kind, team, note, actor, at)
                                  VALUES (%s, %s, %s, %s, %s, %s, {at})""", (tid, iid, kind, team, note, actor))
+    for email, name, role in DEMO_STAFF:
+        set_login(op["slug"], email, name, role, DEMO_PASSWORD, must_change=False)
     counts = {"groups": len(data["groups"]), "pilgrims": len(data["pilgrims"]), "flights": len(data["flights"]),
               "shifts": len(data["resources"]), "incidents": len(data["incidents"])}
     print(f"loaded {op['slug']}: {counts['groups']} groups, {counts['pilgrims']} pilgrims, "

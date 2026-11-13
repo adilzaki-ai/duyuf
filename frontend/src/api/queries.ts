@@ -11,7 +11,9 @@ import type {
   NewIncident,
   NewPilgrim,
   NewShift,
+  NewStaff,
   PilgrimChange,
+  StaffChange,
   PilgrimFilter,
   WhatIf,
 } from "../domain/types";
@@ -237,5 +239,28 @@ export function useAsk() {
     mutationFn: (v: { question: string; history: { question: string; answer: string }[] }) =>
       source.ask(v.question, v.history),
     onSettled: () => void qc.invalidateQueries({ queryKey: ["analyst-recent"] }),
+  });
+}
+
+export function useStaff() {
+  const { source } = useSession();
+  return useQuery({ queryKey: ["staff"], queryFn: () => source.staff() });
+}
+
+export function useAddStaff() {
+  const { source } = useSession();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (s: NewStaff) => source.addStaff(s),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["staff"] }),
+  });
+}
+
+export function useUpdateStaff() {
+  const { source } = useSession();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; change: StaffChange }) => source.updateStaff(v.id, v.change),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["staff"] }),
   });
 }

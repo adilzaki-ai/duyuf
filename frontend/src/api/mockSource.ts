@@ -31,6 +31,7 @@ import type {
   NewIncident,
   NewPilgrim,
   NewShift,
+  NewStaff,
   Overview,
   Pilgrim,
   PilgrimDetail,
@@ -38,6 +39,8 @@ import type {
   PilgrimFilter,
   Scope,
   Shift,
+  StaffChange,
+  StaffMember,
   UnplannedGroup,
   WhatIf,
 } from "../domain/types";
@@ -90,6 +93,7 @@ const ALL_SCOPES: Scope[] = [
   "incident:read",
   "incident:write",
   "analyst:ask",
+  "staff:manage",
 ];
 
 /** A day offset and an hour as an instant, read on the Saudi clock (UTC+3, no daylight saving). */
@@ -109,6 +113,29 @@ export class MockSource implements DataSource {
   private readonly flights = new Map<string, FlightRecord>();
   private readonly shiftsById = new Map<string, Shift>();
   private readonly incidentsById = new Map<string, Omit<IncidentDetail, "allowed">>();
+  /* the demo operator's staff, as backend/scripts/seed_demo.py signs them in */
+  private readonly staffById = new Map<string, StaffMember>(
+    (
+      [
+        ["Amina Al-Harbi", "amina@duyuf.demo", "administrator"],
+        ["Omar Siddiqui", "omar@duyuf.demo", "supervisor"],
+        ["Arrivals desk", "desk@duyuf.demo", "staff"],
+        ["Ministry visitor", "viewer@duyuf.demo", "viewer"],
+      ] as const
+    ).map(([display_name, email, role], i) => [
+      `s-${i}`,
+      {
+        id: `s-${i}`,
+        display_name,
+        email,
+        role,
+        disabled: false,
+        must_change_password: false,
+        last_signed_in_at: null,
+        created_at: "2026-10-01T09:00:00+03:00",
+      },
+    ]),
+  );
 
   constructor(now?: Date) {
     this.clock = now ? () => now : () => new Date();
@@ -244,7 +271,8 @@ export class MockSource implements DataSource {
     const op = sample.operator;
     return {
       tenant: { id: "sample", slug: op.slug, name: op.name, name_ar: op.name_ar, is_demo: true },
-      principal: { id: null, name: ACTOR, role: "administrator" },
+      principal: { id: null, name: ACTOR, role: "administrator", email: null, must_change_password: false },
+      via: "sample",
       scopes: ALL_SCOPES,
     };
   }
@@ -844,5 +872,59 @@ export class MockSource implements DataSource {
 
   async analystRecent(): Promise<AnalystAnswer[]> {
     return [];
+  }
+
+  /* ---- signing in, and staff: the sample has no sign in; its staff list lives until reload ---- */
+
+  async signIn(_email: string, _password: string): Promise<Me> {
+    return this.me();
+  }
+
+  async signOut(): Promise<void> {}
+
+  async changePassword(_current: string, _next: string): Promise<Me> {
+    throw new DataSourceError("The sample has no passwords. Sign in to the platform to change yours.", { status: 400 });
+  }
+
+  async staff(): Promise<StaffMember[]> {
+    return [...this.staffById.values()].sort(
+      (a, b) => Number(a.disabled) - Number(b.disabled) || a.role.localeCompare(b.role) || a.display_name.localeCompare(b.display_name),
+    );
+  }
+
+  async addStaff(n: NewStaff): Promise<StaffMember> {
+    const email = n.email.trim().toLowerCase();
+    if ([...this.staffById.values()].some((x) => x.email === email))
+      throw new DataSourceError("already exists: that email signs in already", { status: 409 });
+    if (n.password.length < 10) throw new DataSourceError("a password needs at least 10 characters", { status: 422 });
+    const s: StaffMember = {
+      id: `s-new-${Date.now()}`,
+      display_name: n.display_name.trim(),
+      email,
+      role: n.role,
+      disabled: false,
+      must_change_password: true,
+      last_signed_in_at: null,
+      created_at: this.now(),
+    };
+    this.staffById.set(s.id, s);
+    return s;
+  }
+
+  async updateStaff(id: string, c: StaffChange): Promise<StaffMember> {
+    const s = this.staffById.get(id);
+    if (!s) throw new DataSourceError("no such person", { status: 404 });
+    const next: StaffMember = {
+      ...s,
+      ...(c.display_name ? { display_name: c.display_name } : {}),
+      ...(c.role ? { role: c.role } : {}),
+      ...(c.disabled != null ? { disabled: c.disabled } : {}),
+      ...(c.password ? { must_change_password: true } : {}),
+    };
+    const admins = [...this.staffById.values()].filter((x) => x.id !== id && x.role === "administrator" && !x.disabled);
+    if (s.role === "administrator" && (next.role !== "administrator" || next.disabled) && admins.length === 0)
+      throw new DataSourceError("the operator needs at least one administrator who can sign in", { status: 409 });
+    this.staffById.set(id, next);
+    return next;
   }
 }

@@ -18,7 +18,10 @@ import type {
   NewGroup,
   NewPilgrim,
   NewShift,
+  NewStaff,
   PilgrimChange,
+  StaffChange,
+  StaffMember,
   Shift,
   WhatIf,
   Overview,
@@ -75,6 +78,14 @@ export interface DataSource {
   /** A question about this operator's totals, with the last few turns for follow-ups. Can take a minute. */
   ask(question: string, history: { question: string; answer: string }[]): Promise<AnalystAnswer>;
   analystRecent(): Promise<AnalystAnswer[]>;
+  /** Email and password; the session is a cookie the page cannot read. */
+  signIn(email: string, password: string): Promise<Me>;
+  signOut(): Promise<void>;
+  /** Their own password. Every other session of theirs ends. */
+  changePassword(current: string, next: string): Promise<Me>;
+  staff(): Promise<StaffMember[]>;
+  addStaff(s: NewStaff): Promise<StaffMember>;
+  updateStaff(id: string, change: StaffChange): Promise<StaffMember>;
 }
 
 /** A refusal or failure, carrying the platform's own words so the screen can show them. */

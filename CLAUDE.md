@@ -7,7 +7,8 @@ database and ports. Never touch Sky Logics from here.
 ## Shape
 - Backend: `backend/api/duyuf` (FastAPI). Every request runs in
   `tenant_session()` as role `duyuf_app` with `duyuf.tenant_id` set; RLS does the
-  isolation. `owner_session()` is for scripts and key lookup only, never routes.
+  isolation. `owner_session()` is for scripts and credential checks (keys, sign in,
+  sessions, passwords) inside `core/auth.py` only, never in a router.
 - New table → its own migration in `backend/db/migrations/NNNN_*.sql`, with
   explicit GRANTs to `duyuf_app` and the RLS loop (see 0003). No default privileges.
 - Routes ask for a scope (`require("pilgrim:write")`), never a role. Roles → scopes

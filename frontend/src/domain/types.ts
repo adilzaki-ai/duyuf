@@ -14,11 +14,23 @@ export type Scope =
   | "flight:write"
   | "incident:read"
   | "incident:write"
-  | "analyst:ask";
+  | "analyst:ask"
+  | "staff:manage";
+
+export type Role = "administrator" | "supervisor" | "staff" | "viewer";
 
 export interface Me {
   tenant: { id: string; slug: string; name: string; name_ar: string | null; is_demo: boolean };
-  principal: { id: string | null; name: string; role: string };
+  principal: {
+    id: string | null;
+    name: string;
+    role: string;
+    email?: string | null;
+    /** a new or reset password: nothing else opens until it is changed */
+    must_change_password?: boolean;
+  };
+  /** how they came in: signed in (session), an API key, the developer header, or the sample */
+  via?: "session" | "key" | "dev" | "sample";
   scopes: Scope[];
 }
 
@@ -426,4 +438,31 @@ export interface AnalystAnswer {
   output_tokens: number | null;
   seconds: number | null;
   asked_at: string;
+}
+
+export interface StaffMember {
+  id: string;
+  display_name: string;
+  /** null: a person keys were issued to, who cannot sign in */
+  email: string | null;
+  role: Role;
+  disabled: boolean;
+  must_change_password: boolean;
+  last_signed_in_at: string | null;
+  created_at: string;
+}
+
+export interface NewStaff {
+  display_name: string;
+  email: string;
+  role: Role;
+  password: string;
+}
+
+export interface StaffChange {
+  display_name?: string;
+  role?: Role;
+  disabled?: boolean;
+  /** a password to hand over; it must be changed at the next sign in */
+  password?: string;
 }
