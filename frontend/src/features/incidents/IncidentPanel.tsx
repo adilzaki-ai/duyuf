@@ -54,7 +54,9 @@ export function IncidentPanel({ id, teams, onClose }: { id: string; teams: strin
           <p style={{ margin: "8px 0" }}>
             <PriorityChip priority={q.data.priority} /> <span className={u.chip}>{incidentStatusLabel(q.data.status)}</span>
           </p>
-          <p className={s.text}>{q.data.description}</p>
+          <p className={s.text} dir="auto">
+            {q.data.description}
+          </p>
           <ul className={u.list} style={{ marginTop: 10 }}>
             {q.data.pilgrim_name && (
               <li>
@@ -81,11 +83,11 @@ export function IncidentPanel({ id, teams, onClose }: { id: string; teams: strin
             )}
             <li>
               <span>{t("Where")}</span>
-              <span>{q.data.location ?? "—"}</span>
+              <span dir="auto">{q.data.location ?? "—"}</span>
             </li>
             <li>
               <span>{t("Team")}</span>
-              <span>{q.data.team ?? "—"}</span>
+              <span dir="auto">{q.data.team ?? "—"}</span>
             </li>
             <li>
               <span>{t("Raised")}</span>
@@ -97,7 +99,9 @@ export function IncidentPanel({ id, teams, onClose }: { id: string; teams: strin
           {q.data.resolution && (
             <>
               <h3 className={p.h3}>{t("How it was resolved")}</h3>
-              <p className={s.text}>{q.data.resolution}</p>
+              <p className={s.text} dir="auto">
+                {q.data.resolution}
+              </p>
             </>
           )}
 
@@ -183,7 +187,11 @@ export function IncidentPanel({ id, teams, onClose }: { id: string; teams: strin
                 <span className={u.sub}>
                   {fmtDateTime(e.at)} · {t("by {who}", { who: e.actor })}
                 </span>
-                {e.note && <span className={u.sub}>“{e.note}”</span>}
+                {e.note && (
+                  <span className={u.sub} dir="auto">
+                    “{e.note}”
+                  </span>
+                )}
               </li>
             ))}
           </ol>

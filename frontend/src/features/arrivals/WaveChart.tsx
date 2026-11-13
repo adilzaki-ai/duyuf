@@ -2,7 +2,7 @@ import { useState } from "react";
 import { airportName, WAVE_SERIES, waveSeries } from "../../domain/airports";
 import type { Wave } from "../../domain/types";
 import { fmtNum, getLang, t } from "../../i18n";
-import { ksaTime } from "../../lib/dates";
+import { ksaDate, ksaTime } from "../../lib/dates";
 import a from "./arrivals.module.css";
 
 const PLOT_PX = 160;
@@ -13,6 +13,12 @@ const COLOR: Record<(typeof WAVE_SERIES)[number], string> = {
 };
 
 const seriesName = (s: (typeof WAVE_SERIES)[number]) => (s === "other" ? t("Other airports") : airportName(s));
+
+/** "13/11" (day/month, Saudi date) under the axis: short enough for a narrow bar, and read the same in both languages. */
+function dayShort(iso: string): string {
+  const [, m, d] = ksaDate(new Date(iso)).split("-");
+  return `${Number(d)}/${Number(m)}`;
+}
 
 function day(iso: string): string {
   return new Intl.DateTimeFormat(getLang() === "ar" ? "ar-SA-u-ca-gregory-nu-latn" : "en-GB", {
@@ -101,7 +107,7 @@ export function WaveChart({ waves, slotHours }: { waves: Wave[]; slotHours: numb
                 )}
                 {hover === i && r.total > 0 && (
                   <div className={a.tip} role="tooltip">
-                    <b>{day(r.start)}</b> {ksaTime(new Date(r.start))}–{end(r.start)}
+                    <b>{day(r.start)}</b> <bdi dir="ltr">{ksaTime(new Date(r.start))}–{end(r.start)}</bdi>
                     <ul>
                       {present
                         .filter((s) => r.by[s])
@@ -134,7 +140,11 @@ export function WaveChart({ waves, slotHours }: { waves: Wave[]; slotHours: numb
             return (
               <span key={r.start}>
                 {time ? ksaTime(new Date(r.start)) : "\u00a0"}
-                {date && <b>{day(r.start)}</b>}
+                {date && (
+                  <b>
+                    <bdi dir="ltr">{dayShort(r.start)}</bdi>
+                  </b>
+                )}
               </span>
             );
           })}

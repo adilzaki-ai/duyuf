@@ -7,8 +7,14 @@ export type Lang = "en" | "ar";
 const KEY = "duyuf.lang";
 let current: Lang = read();
 
+/** ?lang=ar (or en) on any link opens it in that language, and remembers it. Otherwise the last choice. */
 function read(): Lang {
   try {
+    const asked = new URLSearchParams(globalThis.location?.search ?? "").get("lang");
+    if (asked === "ar" || asked === "en") {
+      localStorage.setItem(KEY, asked);
+      return asked;
+    }
     return localStorage.getItem(KEY) === "ar" ? "ar" : "en";
   } catch {
     return "en";
@@ -53,6 +59,21 @@ export function LangProvider({ children }: { children: ReactNode }) {
 }
 
 export const useLang = () => useContext(LangContext);
+
+/*
+ * Mixing directions. Inside Arabic text a Latin run (a flight number, a time
+ * range like 09:00–12:00) pulls neighbouring digits and punctuation into it and
+ * can come out reversed. These keep such runs whole.
+ */
+
+/** A run that always reads left to right, kept apart from the text around it (LRI … PDI). */
+export const ltr = (s: string) => `\u2066${s}\u2069`;
+
+/** "a, b" in English, "a، b" in Arabic. */
+export const sep = () => (current === "ar" ? "، " : ", ");
+
+/** From one place to another: "KHI → Jeddah"; in Arabic the arrow points the way it is read. */
+export const route = (from: string, to: string) => (current === "ar" ? `${ltr(from)} ← ${to}` : `${from} → ${to}`);
 
 /** Numbers stay in Western digits, as Saudi apps commonly show them. */
 export const fmtNum = (n: number) => new Intl.NumberFormat("en").format(n);

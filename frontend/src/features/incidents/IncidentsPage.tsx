@@ -54,7 +54,7 @@ function Report({ pilgrimId, onDone }: { pilgrimId: string | null; onDone: (id: 
       <h2>{t("Report an incident")}</h2>
       <form className={u.form} onSubmit={submit}>
         <label>
-          {t("What")}
+          {t("Kind")}
           <select value={kind} onChange={(e) => setKind(e.target.value as IncidentKind)}>
             {INCIDENT_KINDS.map((k) => (
               <option key={k} value={k}>
@@ -210,7 +210,7 @@ export function IncidentsPage() {
                   <tr>
                     <th>#</th>
                     <th>{t("Priority")}</th>
-                    <th>{t("What")}</th>
+                    <th>{t("Kind")}</th>
                     <th>{t("Who")}</th>
                     <th>{t("Where")}</th>
                     <th>{t("Waiting")}</th>
@@ -228,13 +228,17 @@ export function IncidentsPage() {
                         </td>
                         <td>
                           <b>{kindText(i.kind)}</b>
-                          <span className={`${u.sub} ${s.desc}`}>{i.description}</span>
+                          <span className={`${u.sub} ${s.desc}`} dir="auto">
+                            {i.description}
+                          </span>
                         </td>
                         <td>
                           {i.pilgrim_name ?? (i.group_name ? t("Whole group") : "—")}
                           {i.group_code && <span className={`${u.sub} ${u.mono}`}>{i.group_code}</span>}
                         </td>
-                        <td style={{ whiteSpace: "normal" }}>{i.location ?? "—"}</td>
+                        <td style={{ whiteSpace: "normal" }} dir="auto">
+                          {i.location ?? "—"}
+                        </td>
                         <td className={s.waiting}>
                           {i.status === "resolved" ? (
                             <span className={u.muted}>{incidentStatusLabel("resolved")}</span>
@@ -242,7 +246,7 @@ export function IncidentsPage() {
                             <span className={waiting ? s.late : undefined}>{since(i.opened_at, now)}</span>
                           )}
                         </td>
-                        <td>{i.team ?? <span className={u.muted}>{t("No one yet")}</span>}</td>
+                        <td dir={i.team ? "auto" : undefined}>{i.team ?? <span className={u.muted}>{t("No one yet")}</span>}</td>
                       </tr>
                     );
                   })}

@@ -99,9 +99,13 @@ function Row({ p, me }: { p: StaffMember; me: string | null }) {
         {p.display_name}
         {self && <span className={u.sub}>{t("You")}</span>}
       </td>
-      <td className={u.mono} dir="ltr">
-        {p.email ?? <span className={u.muted}>{t("No sign in (key only)")}</span>}
-      </td>
+      {p.email ? (
+        <td className={u.mono} dir="ltr" style={{ textAlign: "start" }}>
+          {p.email}
+        </td>
+      ) : (
+        <td className={u.muted}>{t("No sign in (key only)")}</td>
+      )}
       <td>
         <select
           aria-label={t("Role of {who}", { who: p.display_name })}

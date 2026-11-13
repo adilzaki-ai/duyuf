@@ -28,6 +28,9 @@ cd frontend && npm run dev
 
 It runs beside Sky Logics (5173 / 8000) without clashing.
 
+Add `?lang=ar` (or `?lang=en`) to any link to open it in that language; the
+choice is remembered.
+
 Staff sign in with their own email and password. The demo operator has one
 login per role, all with the password `duyuf-demo-1448` (invented people,
 demonstration operators only; set `DUYUF_DEMO_PASSWORD` to change it):
