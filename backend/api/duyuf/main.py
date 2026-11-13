@@ -19,7 +19,7 @@ from fastapi.responses import JSONResponse
 
 from .core.auth import Identity, identity
 from .core.db import PoolUnavailable, healthy
-from .routers import arrivals, groups, overview, pilgrims, resources
+from .routers import arrivals, groups, imports, overview, pilgrims, resources
 
 VERSION = "0.3.0"
 
@@ -65,6 +65,7 @@ if _origins:
 
 app.include_router(overview.router)
 app.include_router(groups.router)
+app.include_router(imports.router)
 app.include_router(pilgrims.router)
 app.include_router(arrivals.router)
 app.include_router(resources.router)

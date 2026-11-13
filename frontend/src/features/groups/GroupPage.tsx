@@ -1,13 +1,21 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useGroup } from "../../api/queries";
+import { useCan } from "../../app/SessionContext";
 import { Failed, JourneyBar, Loading, PageHead, u } from "../../design/ui";
 import { kindLabel } from "../../domain/labels";
 import { countryName, fmtDate, fmtHijri, getLang, t } from "../../i18n";
+import { AddPilgrimForm } from "../pilgrims/PilgrimForm";
 import { PilgrimBrowser } from "../pilgrims/PilgrimsPage";
+import { EditGroupForm } from "./GroupForm";
+import { ImportPilgrims } from "./ImportPilgrims";
 
 export function GroupPage() {
   const { id } = useParams();
   const q = useGroup(id);
+  const canGroup = useCan("group:write");
+  const canPilgrim = useCan("pilgrim:write");
+  const [open, setOpen] = useState<"edit" | "add" | "import" | null>(null);
   if (q.isPending) return <Loading />;
   if (q.isError) return <Failed error={q.error} />;
   const g = q.data;
@@ -21,7 +29,30 @@ export function GroupPage() {
       <PageHead
         title={g.name}
         sub={`${g.code} · ${kindLabel(g.kind)} · ${t("Season {s}", { s: g.season })} · ${countryName(g.origin_country)}`}
-      />
+      >
+        {!open && (canGroup || canPilgrim) && (
+          <div className={u.headActions}>
+            {canGroup && (
+              <button type="button" className={`${u.button} ${u.quiet}`} onClick={() => setOpen("edit")}>
+                {t("Edit group")}
+              </button>
+            )}
+            {canPilgrim && (
+              <button type="button" className={`${u.button} ${u.quiet}`} onClick={() => setOpen("import")}>
+                {t("Import from CSV")}
+              </button>
+            )}
+            {canPilgrim && (
+              <button type="button" className={u.button} onClick={() => setOpen("add")}>
+                {t("Add pilgrim")}
+              </button>
+            )}
+          </div>
+        )}
+      </PageHead>
+      {open === "edit" && <EditGroupForm key={g.id} group={g} onClose={() => setOpen(null)} />}
+      {open === "add" && <AddPilgrimForm groupId={g.id} country={g.origin_country} onClose={() => setOpen(null)} />}
+      {open === "import" && <ImportPilgrims groupId={g.id} country={g.origin_country} onClose={() => setOpen(null)} />}
       <div className={u.grid2}>
         <section className={u.card}>
           <ul className={u.list}>

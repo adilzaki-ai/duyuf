@@ -257,3 +257,70 @@ a.button {
 .list li:last-child {
   border-bottom: 0;
 }
+
+/* ---- forms ---- */
+
+.form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 10px 12px;
+  align-items: end;
+  margin-top: 10px;
+}
+
+.form label,
+.field {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.form input,
+.form select,
+.field input,
+.field select {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  min-width: 0;
+  font-size: 15px;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.checks label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+
+.done {
+  color: var(--brand-2);
+}
+
+.headActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

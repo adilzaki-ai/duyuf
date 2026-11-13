@@ -5,9 +5,14 @@ import type {
   FlightChange,
   FlightDetail,
   Group,
+  GroupChange,
+  ImportResult,
   Me,
   NewFlight,
+  NewGroup,
+  NewPilgrim,
   NewShift,
+  PilgrimChange,
   Shift,
   WhatIf,
   Overview,
@@ -96,5 +101,28 @@ export class PlatformSource implements DataSource {
 
   removeShift(id: string) {
     return this.http.delete(`/v1/resources/${encodeURIComponent(id)}`);
+  }
+
+  createGroup(g: NewGroup) {
+    return this.http.post<Group>("/v1/groups", g);
+  }
+
+  updateGroup(id: string, change: GroupChange) {
+    return this.http.patch<Group>(`/v1/groups/${encodeURIComponent(id)}`, change);
+  }
+
+  createPilgrim(p: NewPilgrim) {
+    return this.http.post<PilgrimDetail>("/v1/pilgrims", p);
+  }
+
+  updatePilgrim(id: string, change: PilgrimChange) {
+    return this.http.patch<PilgrimDetail>(`/v1/pilgrims/${encodeURIComponent(id)}`, change);
+  }
+
+  importPilgrims(groupId: string, rows: Record<string, string>[], dryRun: boolean) {
+    return this.http.post<ImportResult>(`/v1/groups/${encodeURIComponent(groupId)}/pilgrims/import`, {
+      rows,
+      dry_run: dryRun,
+    });
   }
 }
