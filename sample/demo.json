@@ -16101,5 +16101,55 @@
    "time": "07:00",
    "delay_minutes": 20
   }
+ ],
+ "resources": [
+  {
+   "airport": "JED",
+   "kind": "wheelchair",
+   "language": null,
+   "quantity": 6,
+   "from_day": -1,
+   "to_day": 8
+  },
+  {
+   "airport": "JED",
+   "kind": "bus",
+   "language": null,
+   "quantity": 2,
+   "from_day": -1,
+   "to_day": 8
+  },
+  {
+   "airport": "JED",
+   "kind": "interpreter",
+   "language": "ur",
+   "quantity": 1,
+   "from_day": -1,
+   "to_day": 8
+  },
+  {
+   "airport": "MED",
+   "kind": "wheelchair",
+   "language": null,
+   "quantity": 3,
+   "from_day": -1,
+   "to_day": 8
+  },
+  {
+   "airport": "MED",
+   "kind": "bus",
+   "language": null,
+   "quantity": 1,
+   "from_day": -1,
+   "to_day": 8
+  },
+  {
+   "airport": "MED",
+   "kind": "interpreter",
+   "language": "id",
+   "quantity": 1,
+   "from_day": -1,
+   "to_day": 8
+  }
  ]
 }

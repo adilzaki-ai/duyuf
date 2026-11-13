@@ -1,7 +1,7 @@
 """Load (or reload) the demonstration operator from sample/demo.json.
 
     .venv/bin/python scripts/seed_demo.py           create the operator if needed, then load
-    .venv/bin/python scripts/seed_demo.py --reset   wipe its groups, pilgrims and flights first
+    .venv/bin/python scripts/seed_demo.py --reset   wipe its groups, pilgrims, flights and shifts first
 
 Refuses any operator that is not a demonstration, in the same statement that
 deletes, so a real company's pilgrims can never be wiped by this. The wipe and
@@ -36,7 +36,7 @@ def seed(reset: bool = False) -> dict:
                                 (tid,)).fetchone()["n"]
         if existing and not reset:
             raise SystemExit(f"{op['slug']} already holds {existing} groups; pass --reset to reload")
-        for table in ("pilgrim_event", "pilgrim", "flight_event", "flight", "pilgrim_group"):
+        for table in ("pilgrim_event", "pilgrim", "flight_event", "flight", "pilgrim_group", "resource_shift"):
             conn.execute(f"""DELETE FROM {table} x USING tenant t
                               WHERE x.tenant_id = t.id AND t.id = %s AND t.is_demo""", (tid,))
         fid = {}
@@ -50,6 +50,13 @@ def seed(reset: bool = False) -> dict:
                    RETURNING id""", {**f, "t": tid}).fetchone()["id"]
             conn.execute("""INSERT INTO flight_event (tenant_id, flight_id, kind, detail, actor, at)
                             VALUES (%s, %s, 'created', '{}', 'Demo load', current_date - 20)""", (tid, fid[f["number"]]))
+        for r in data["resources"]:
+            conn.execute(
+                """INSERT INTO resource_shift (tenant_id, airport, kind, language, quantity, starts_at, ends_at,
+                       created_by)
+                   VALUES (%(t)s, %(airport)s, %(kind)s, %(language)s, %(quantity)s,
+                           (current_date + %(from_day)s)::timestamptz, (current_date + %(to_day)s)::timestamptz,
+                           'Demo load')""", {**r, "t": tid})
         gid = {}
         for g in data["groups"]:
             gid[g["code"]] = conn.execute(
@@ -79,9 +86,10 @@ def seed(reset: bool = False) -> dict:
                        VALUES (%s, %s, %s, %s, 'Demo load',
                                (current_date + %s)::timestamp + make_interval(hours => %s))""",
                     (tid, pid, h["from"], h["to"], h["day"], h["hour"]))
-    counts = {"groups": len(data["groups"]), "pilgrims": len(data["pilgrims"]), "flights": len(data["flights"])}
+    counts = {"groups": len(data["groups"]), "pilgrims": len(data["pilgrims"]), "flights": len(data["flights"]),
+              "shifts": len(data["resources"])}
     print(f"loaded {op['slug']}: {counts['groups']} groups, {counts['pilgrims']} pilgrims, "
-          f"{counts['flights']} flights")
+          f"{counts['flights']} flights, {counts['shifts']} shifts")
     return counts
 
 

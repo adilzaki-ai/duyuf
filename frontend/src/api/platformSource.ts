@@ -7,6 +7,9 @@ import type {
   Group,
   Me,
   NewFlight,
+  NewShift,
+  Shift,
+  WhatIf,
   Overview,
   Pilgrim,
   PilgrimDetail,
@@ -77,5 +80,21 @@ export class PlatformSource implements DataSource {
       `/v1/flights/${encodeURIComponent(id)}/landed`,
       { note },
     );
+  }
+
+  whatIf(w: WhatIf) {
+    return this.http.post<Arrivals>("/v1/arrivals/what-if", w);
+  }
+
+  async shifts() {
+    return (await this.http.get<{ items: Shift[] }>("/v1/resources")).items;
+  }
+
+  addShift(s: NewShift) {
+    return this.http.post<Shift>("/v1/resources", s);
+  }
+
+  removeShift(id: string) {
+    return this.http.delete(`/v1/resources/${encodeURIComponent(id)}`);
   }
 }

@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { startDataSource, type StartedSource } from "../api/createDataSource";
 import { ArrivalsPage } from "../features/arrivals/ArrivalsPage";
 import { FlightPage } from "../features/arrivals/FlightPage";
+import { ResourcesPage } from "../features/arrivals/ResourcesPage";
 import { GroupPage } from "../features/groups/GroupPage";
 import { GroupsPage } from "../features/groups/GroupsPage";
 import { OverviewPage } from "../features/overview/OverviewPage";
@@ -39,6 +40,7 @@ export function App({ start = startDataSource }: { start?: Start }) {
                 <Route element={<Shell />}>
                   <Route index element={<OverviewPage />} />
                   <Route path="arrivals" element={<ArrivalsPage />} />
+                  <Route path="arrivals/resources" element={<ResourcesPage />} />
                   <Route path="arrivals/:id" element={<FlightPage />} />
                   <Route path="groups" element={<GroupsPage />} />
                   <Route path="groups/:id" element={<GroupPage />} />

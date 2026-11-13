@@ -91,6 +91,18 @@ FLIGHTS = [
     ("TK 92", "IST", "MED", 3, "07:00", 20, [("U-TR-0155", 0, 26)]),
 ]
 
+# What the operator has on shift: airport, kind, language, how many, from and to
+# (days from today, at midnight Saudi time). Jeddah is covered; Madinah is short
+# of wheelchairs and has no Hausa or Turkish interpreter, so the board shows gaps.
+RESOURCES = [
+    ("JED", "wheelchair", None, 6, -1, 8),
+    ("JED", "bus", None, 2, -1, 8),
+    ("JED", "interpreter", "ur", 1, -1, 8),
+    ("MED", "wheelchair", None, 3, -1, 8),
+    ("MED", "bus", None, 1, -1, 8),
+    ("MED", "interpreter", "id", 1, -1, 8),
+]
+
 PATH = ["registered", "visa_issued", "arrived", "in_makkah", "in_madinah", "departed"]
 
 
@@ -163,8 +175,10 @@ def main() -> None:
         "groups": groups, "pilgrims": pilgrims,
         "flights": [{"number": n, "origin_airport": o, "arrival_airport": a, "day": d, "time": t,
                      "delay_minutes": late} for n, o, a, d, t, late, _ in FLIGHTS],
+        "resources": [{"airport": a, "kind": k, "language": lang, "quantity": q, "from_day": f, "to_day": t}
+                      for a, k, lang, q, f, t in RESOURCES],
     }, ensure_ascii=False, indent=1) + "\n")
-    print(f"wrote {OUT} — {len(groups)} groups, {len(pilgrims)} pilgrims, {len(FLIGHTS)} flights")
+    print(f"wrote {OUT} — {len(groups)} groups, {len(pilgrims)} pilgrims, {len(FLIGHTS)} flights, {len(RESOURCES)} shifts")
 
 
 if __name__ == "__main__":
