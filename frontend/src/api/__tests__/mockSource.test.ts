@@ -131,4 +131,39 @@ describe("the sample", () => {
       m.addShift({ airport: "JED", kind: "interpreter", language: null, quantity: 1, starts_at: s.starts_at, ends_at: s.ends_at }),
     ).rejects.toThrow(/needs a language/);
   });
+
+  it("adds a group and a pilgrim, edits them, and imports a sheet all or nothing", async () => {
+    const m = new MockSource(NOW);
+    const g = await m.createGroup({
+      code: "U-PK-0401", name: "Lahore Umrah", kind: "umrah", season: "1448", origin_country: "PK",
+      arrival_date: "2026-12-01", departure_date: "2026-12-14", leader_name: null, leader_phone: null,
+    });
+    await expect(m.createGroup({ ...g, name: "again" })).rejects.toThrow(/already exists/);
+    expect((await m.updateGroup(g.id, { name: "Lahore Umrah — December" })).name).toBe("Lahore Umrah — December");
+
+    const p = await m.createPilgrim({
+      group_id: g.id, full_name: "Imran Khan", full_name_ar: null, gender: "male", date_of_birth: "1958-03-02",
+      nationality: "PK", passport_no: "ab 123 4567", phone: null, language: "ur", needs: ["wheelchair"],
+    });
+    expect([p.passport_no, p.status, p.group_name]).toEqual(["AB1234567", "registered", "Lahore Umrah — December"]);
+    expect((await m.updatePilgrim(p.id, { needs: [], phone: "+92 300" })).phone).toBe("+92 300");
+
+    const rows: Record<string, string>[] = [
+      { full_name: "Ayesha Malik", gender: "F", nationality: "pk", passport_no: "AB7654321", date_of_birth: "01/07/1980", needs: "medical" },
+      { full_name: "", gender: "x", nationality: "PK", passport_no: "AB1234567" },
+    ];
+    const dry = await m.importPilgrims(g.id, rows, true);
+    expect(dry.valid).toBe(1);
+    expect(dry.errors).toEqual([
+      { row: 2, field: "full_name", message: "required" },
+      { row: 2, field: "gender", message: "male or female (M or F)" },
+    ]);
+    expect((await m.importPilgrims(g.id, rows, false)).saved).toBe(false);
+    expect((await m.pilgrims({ group_id: g.id })).total).toBe(1);
+    const ok = await m.importPilgrims(g.id, rows.slice(0, 1), false);
+    expect(ok).toEqual({ rows: 1, valid: 1, errors: [], saved: true });
+    const ayesha = (await m.pilgrims({ group_id: g.id, q: "ayesha" })).items[0];
+    expect([ayesha.date_of_birth, ayesha.needs]).toEqual(["1980-07-01", ["medical"]]);
+    expect((await m.importPilgrims(g.id, rows.slice(0, 1), true)).errors[0].message).toBe("already registered with this operator");
+  });
 });

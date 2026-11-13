@@ -77,4 +77,43 @@ describe("Duyuf on the sample", () => {
     await userEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
     await vi.waitFor(() => expect(rows()).toBe(before - 1));
   });
+
+  it("adds a group, then a pilgrim into it from the group's page", async () => {
+    render(<App start={start} />);
+    await userEvent.click(await screen.findByRole("link", { name: "Groups" }));
+    await userEvent.click(await screen.findByRole("button", { name: "New group" }));
+    await userEvent.type(screen.getByLabelText("Code"), "u-pk-0401");
+    await userEvent.type(screen.getByLabelText("Name"), "Lahore Umrah");
+    await userEvent.selectOptions(screen.getByLabelText("From"), "PK");
+    await userEvent.click(screen.getByRole("button", { name: "Save group" }));
+    expect(await screen.findByRole("heading", { name: "Lahore Umrah" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Add pilgrim" }));
+    const form = screen.getByRole("heading", { name: "Add a pilgrim" }).closest("section")!;
+    await userEvent.type(within(form).getByLabelText("Name"), "Imran Khan");
+    await userEvent.type(within(form).getByLabelText("Passport"), "AB1234567");
+    await userEvent.click(within(form).getByLabelText("Wheelchair"));
+    await userEvent.click(within(form).getByRole("button", { name: "Add pilgrim" }));
+    expect(await within(form).findByText("Imran Khan added.")).toBeInTheDocument();
+    expect(await screen.findByRole("cell", { name: "Imran Khan" })).toBeInTheDocument();
+  });
+
+  it("checks a CSV before adding it, and adds it when clean", async () => {
+    render(<App start={start} />);
+    await userEvent.click(await screen.findByRole("link", { name: "Groups" }));
+    await userEvent.click(await screen.findByText("Dhaka Umrah"));
+    await userEvent.click(await screen.findByRole("button", { name: "Import from CSV" }));
+    const bad = new File(["full_name,gender,nationality,passport_no\nRahim Uddin,M,BD,BX1234567\n,Q,BD,1\n"], "g.csv", {
+      type: "text/csv",
+    });
+    await userEvent.upload(screen.getByLabelText("CSV file"), bad);
+    expect(await screen.findByText("1 of 2 rows are ready.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add pilgrims" })).toBeDisabled();
+    const good = new File(["full_name,gender,nationality,passport_no\nRahim Uddin,M,BD,BX1234567\n"], "g.csv", {
+      type: "text/csv",
+    });
+    await userEvent.upload(screen.getByLabelText("CSV file"), good);
+    await userEvent.click(await screen.findByRole("button", { name: "Add 1 pilgrims" }));
+    expect(await screen.findByText("1 pilgrims added to the group.")).toBeInTheDocument();
+  });
 });

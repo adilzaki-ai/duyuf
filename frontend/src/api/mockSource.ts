@@ -1,5 +1,6 @@
 import sample from "../../../sample/demo.json";
 import { brief, flightState, landingDay, normalFlightNumber, waves } from "../domain/brief";
+import { checkRow, IMPORT_COLUMNS } from "../domain/importRow";
 import { blockOf, load } from "../domain/plan";
 import { MOVES, refusal, STATUSES, type Status } from "../domain/journey";
 import type {
@@ -10,15 +11,21 @@ import type {
   FlightDetail,
   FlightEvent,
   Group,
+  GroupChange,
+  ImportProblem,
+  ImportResult,
   JourneyStep,
   Me,
   MovingGroup,
   Need,
   NewFlight,
+  NewGroup,
+  NewPilgrim,
   NewShift,
   Overview,
   Pilgrim,
   PilgrimDetail,
+  PilgrimChange,
   PilgrimFilter,
   Scope,
   Shift,
@@ -513,5 +520,100 @@ export class MockSource implements DataSource {
     const no_visa = on.filter((p) => p.status === "registered").length;
     f.history.push({ kind: "landed", detail: { arrived: moving.length, no_visa }, actor: ACTOR, at: f.landed_at });
     return { ...this.detail(id), arrived: moving.length, no_visa };
+  }
+
+  /* ---- adding and editing ---- */
+
+  async createGroup(g: NewGroup): Promise<Group> {
+    if ([...this.groupsById.values()].some((x) => x.code === g.code))
+      throw new DataSourceError(`already exists: a group with code ${g.code}`, { status: 409 });
+    if (!/^[A-Z]{2}$/.test(g.origin_country))
+      throw new DataSourceError("a value is not in the form expected: country is two letters", { status: 422 });
+    if (g.arrival_date && g.departure_date && g.departure_date < g.arrival_date)
+      throw new DataSourceError("a value is not in the form expected: it leaves before it arrives", { status: 400 });
+    const id = `g-${g.code}`;
+    this.groupsById.set(id, { id, ...g });
+    return this.withCounts(this.groupsById.get(id)!);
+  }
+
+  async updateGroup(id: string, change: GroupChange): Promise<Group> {
+    const g = this.groupsById.get(id);
+    if (!g) throw new DataSourceError("no such group", { status: 404 });
+    const next = { ...g, ...change };
+    if (next.arrival_date && next.departure_date && next.departure_date < next.arrival_date)
+      throw new DataSourceError("a value is not in the form expected: it leaves before it arrives", { status: 400 });
+    this.groupsById.set(id, next);
+    for (const p of this.people.values())
+      if (p.group_id === id && next.name !== g.name) this.people.set(p.id, { ...p, group_name: next.name });
+    return this.withCounts(next);
+  }
+
+  private add(p: NewPilgrim, note: string | null): PilgrimDetail {
+    const g = this.groupsById.get(p.group_id);
+    if (!g) throw new DataSourceError("refers to something that does not exist: the group", { status: 422 });
+    const passport = p.passport_no.replace(/\s+/g, "").toUpperCase();
+    if ([...this.people.values()].some((x) => x.nationality === p.nationality && x.passport_no === passport))
+      throw new DataSourceError(`already exists: passport ${passport}`, { status: 409 });
+    const now = this.now();
+    const id = `p-new-${this.people.size}-${Date.now()}`;
+    const detail: PilgrimDetail = {
+      ...p,
+      id,
+      passport_no: passport,
+      group_code: g.code,
+      group_name: g.name,
+      status: "registered",
+      allowed: [...MOVES.registered],
+      updated_at: now,
+      arrival_flight_id: null,
+      flight_number: null,
+      history: [{ from_status: null, to_status: "registered", note, actor: ACTOR, at: now }],
+    };
+    this.people.set(id, detail);
+    return detail;
+  }
+
+  async createPilgrim(p: NewPilgrim): Promise<PilgrimDetail> {
+    return { ...this.add(p, null) };
+  }
+
+  async updatePilgrim(id: string, change: PilgrimChange): Promise<PilgrimDetail> {
+    const p = this.people.get(id);
+    if (!p) throw new DataSourceError("no such pilgrim", { status: 404 });
+    const next: PilgrimDetail = { ...p, ...change, updated_at: this.now() };
+    if ("arrival_flight_id" in change) next.flight_number = null;
+    this.people.set(id, next);
+    return { ...next };
+  }
+
+  async importPilgrims(groupId: string, rows: Record<string, string>[], dryRun: boolean): Promise<ImportResult> {
+    if (!this.groupsById.has(groupId)) throw new DataSourceError("no such group", { status: 404 });
+    const errors: ImportProblem[] = [];
+    const good: [number, Omit<NewPilgrim, "group_id">][] = [];
+    const seen = new Map<string, number>();
+    rows.forEach((raw, i) => {
+      const { value, problems } = checkRow(raw);
+      errors.push(...problems.map((x) => ({ row: i + 1, ...x })));
+      if (!value) return;
+      const key = `${value.nationality}|${value.passport_no}`;
+      if (seen.has(key)) {
+        errors.push({ row: i + 1, field: "passport_no", message: `same passport as row ${seen.get(key)}` });
+        return;
+      }
+      seen.set(key, i + 1);
+      good.push([i + 1, value]);
+    });
+    for (const [row, v] of good)
+      if ([...this.people.values()].some((x) => x.nationality === v.nationality && x.passport_no === v.passport_no))
+        errors.push({ row, field: "passport_no", message: "already registered with this operator" });
+    const order = (f: string) => {
+      const i = (IMPORT_COLUMNS as readonly string[]).indexOf(f);
+      return i < 0 ? 99 : i;
+    };
+    errors.sort((a, b) => a.row - b.row || order(a.field) - order(b.field));
+    const bad = new Set(errors.map((e) => e.row));
+    const saved = !dryRun && errors.length === 0 && rows.length > 0;
+    if (saved) for (const [, v] of good) this.add({ ...v, group_id: groupId }, "Imported from a spreadsheet");
+    return { rows: rows.length, valid: rows.length - bad.size, errors, saved };
   }
 }

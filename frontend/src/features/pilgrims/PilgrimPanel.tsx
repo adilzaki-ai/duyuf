@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMovePilgrim, usePilgrim } from "../../api/queries";
+import { EditPilgrim } from "./PilgrimForm";
 import { useCan } from "../../app/SessionContext";
 import { Failed, Loading, StatusChip, u } from "../../design/ui";
 import { needLabel, statusLabel } from "../../domain/labels";
@@ -12,7 +13,9 @@ export function PilgrimPanel({ id, onClose }: { id: string; onClose: () => void 
   const q = usePilgrim(id);
   const move = useMovePilgrim();
   const canMove = useCan("pilgrim:status");
+  const canEdit = useCan("pilgrim:write");
   const [note, setNote] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
 
   return (
     <aside className={`${u.card} ${p.panel}`} aria-label={q.data?.full_name}>
@@ -26,6 +29,12 @@ export function PilgrimPanel({ id, onClose }: { id: string; onClose: () => void 
       ) : (
         <>
           <h2>{q.data.full_name}</h2>
+          {canEdit && editing !== id && (
+            <button type="button" className={`${u.button} ${u.quiet}`} style={{ marginTop: 6 }} onClick={() => setEditing(id)}>
+              {t("Edit")}
+            </button>
+          )}
+          {editing === id && <EditPilgrim key={id} p={q.data} onClose={() => setEditing(null)} />}
           {q.data.full_name_ar && (
             <p className={u.muted} dir="rtl" style={{ margin: 0 }}>
               {q.data.full_name_ar}

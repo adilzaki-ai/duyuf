@@ -262,3 +262,56 @@ export interface FlightChange {
 }
 
 export type Assignment = { group_id: string } | { pilgrim_ids: string[] };
+
+export interface NewGroup {
+  code: string;
+  name: string;
+  kind: GroupKind;
+  season: string;
+  origin_country: string;
+  arrival_date: string | null;
+  departure_date: string | null;
+  leader_name: string | null;
+  leader_phone: string | null;
+}
+
+export type GroupChange = Partial<
+  Pick<NewGroup, "name" | "arrival_date" | "departure_date" | "leader_name" | "leader_phone">
+>;
+
+export interface NewPilgrim {
+  group_id: string;
+  full_name: string;
+  full_name_ar: string | null;
+  gender: "male" | "female";
+  date_of_birth: string | null;
+  nationality: string;
+  passport_no: string;
+  phone: string | null;
+  language: string | null;
+  needs: Need[];
+}
+
+export interface PilgrimChange {
+  full_name?: string;
+  full_name_ar?: string | null;
+  phone?: string | null;
+  language?: string | null;
+  needs?: Need[];
+  /** only null: takes the pilgrim off their arrival flight */
+  arrival_flight_id?: null;
+}
+
+export interface ImportProblem {
+  /** the data row, counting from 1 under the header */
+  row: number;
+  field: string;
+  message: string;
+}
+
+export interface ImportResult {
+  rows: number;
+  valid: number;
+  errors: ImportProblem[];
+  saved: boolean;
+}

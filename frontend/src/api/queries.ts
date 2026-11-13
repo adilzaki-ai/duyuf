@@ -1,7 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "../app/SessionContext";
 import type { Status } from "../domain/journey";
-import type { Assignment, FlightChange, NewFlight, NewShift, PilgrimFilter, WhatIf } from "../domain/types";
+import type {
+  Assignment,
+  FlightChange,
+  GroupChange,
+  NewFlight,
+  NewGroup,
+  NewPilgrim,
+  NewShift,
+  PilgrimChange,
+  PilgrimFilter,
+  WhatIf,
+} from "../domain/types";
 
 export function useOverview() {
   const { source } = useSession();
@@ -106,4 +117,48 @@ export function useRemoveShift() {
   const { source } = useSession();
   const refresh = useRefreshAll();
   return useMutation({ mutationFn: (id: string) => source.removeShift(id), onSuccess: refresh });
+}
+
+export function useCreateGroup() {
+  const { source } = useSession();
+  const refresh = useRefreshAll();
+  return useMutation({ mutationFn: (g: NewGroup) => source.createGroup(g), onSuccess: refresh });
+}
+
+export function useUpdateGroup(id: string) {
+  const { source } = useSession();
+  const refresh = useRefreshAll();
+  return useMutation({ mutationFn: (c: GroupChange) => source.updateGroup(id, c), onSuccess: refresh });
+}
+
+export function useCreatePilgrim() {
+  const { source } = useSession();
+  const refresh = useRefreshAll();
+  return useMutation({ mutationFn: (p: NewPilgrim) => source.createPilgrim(p), onSuccess: refresh });
+}
+
+export function useUpdatePilgrim(id: string) {
+  const { source } = useSession();
+  const qc = useQueryClient();
+  const refresh = useRefreshAll();
+  return useMutation({
+    mutationFn: (c: PilgrimChange) => source.updatePilgrim(id, c),
+    onSuccess: (p) => {
+      qc.setQueryData(["pilgrim", p.id], p);
+      refresh();
+    },
+  });
+}
+
+/** Check (dryRun) or save a spreadsheet of pilgrims into a group. Only a save changes the screens. */
+export function useImportPilgrims(groupId: string) {
+  const { source } = useSession();
+  const refresh = useRefreshAll();
+  return useMutation({
+    mutationFn: (v: { rows: Record<string, string>[]; dryRun: boolean }) =>
+      source.importPilgrims(groupId, v.rows, v.dryRun),
+    onSuccess: (r) => {
+      if (r.saved) refresh();
+    },
+  });
 }

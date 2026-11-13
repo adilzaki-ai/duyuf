@@ -67,6 +67,20 @@ last four characters of a passport and no birth date (Saudi PDPL).
 Administrators and supervisors plan flights; staff can mark a flight landed,
 which moves everyone on it who has a visa to "arrived".
 
+## Adding pilgrims
+
+Groups and pilgrims are added and edited in the web app (*Groups → New group*;
+on a group, *Add pilgrim* or *Import from CSV*). The import takes a CSV with
+these columns, and offers a template:
+
+```
+full_name, full_name_ar, gender, date_of_birth, nationality, passport_no, phone, language, needs
+```
+
+It is all or nothing: the platform checks every row first and lists each
+problem by row and column; one bad row and nothing is saved. Passport, birth
+date and nationality are fixed once a pilgrim is registered.
+
 ## The arrivals board
 
 Each flight gets a brief before it lands: pilgrims, over 75 on the day,

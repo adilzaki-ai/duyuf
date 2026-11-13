@@ -5,9 +5,14 @@ import type {
   FlightChange,
   FlightDetail,
   Group,
+  GroupChange,
+  ImportResult,
   Me,
   NewFlight,
+  NewGroup,
+  NewPilgrim,
   NewShift,
+  PilgrimChange,
   Shift,
   WhatIf,
   Overview,
@@ -45,6 +50,12 @@ export interface DataSource {
   shifts(): Promise<Shift[]>;
   addShift(s: NewShift): Promise<Shift>;
   removeShift(id: string): Promise<void>;
+  createGroup(g: NewGroup): Promise<Group>;
+  updateGroup(id: string, change: GroupChange): Promise<Group>;
+  createPilgrim(p: NewPilgrim): Promise<PilgrimDetail>;
+  updatePilgrim(id: string, change: PilgrimChange): Promise<PilgrimDetail>;
+  /** Spreadsheet rows as read; the platform checks them. All or nothing; `dryRun` checks only. */
+  importPilgrims(groupId: string, rows: Record<string, string>[], dryRun: boolean): Promise<ImportResult>;
 }
 
 /** A refusal or failure, carrying the platform's own words so the screen can show them. */

@@ -1,15 +1,27 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGroups } from "../../api/queries";
+import { useCan } from "../../app/SessionContext";
 import { Failed, JourneyBar, Loading, PageHead, u } from "../../design/ui";
 import { kindLabel } from "../../domain/labels";
 import { countryName, fmtDate, fmtHijri, fmtNum, t } from "../../i18n";
+import { NewGroupForm } from "./GroupForm";
 
 export function GroupsPage() {
   const q = useGroups();
   const go = useNavigate();
+  const canWrite = useCan("group:write");
+  const [adding, setAdding] = useState(false);
   return (
     <>
-      <PageHead title={t("Groups")} sub={t("Every group, its dates and stage.")} />
+      <PageHead title={t("Groups")} sub={t("Every group, its dates and stage.")}>
+        {canWrite && !adding && (
+          <button type="button" className={u.button} onClick={() => setAdding(true)}>
+            {t("New group")}
+          </button>
+        )}
+      </PageHead>
+      {adding && <NewGroupForm onClose={() => setAdding(false)} />}
       {q.isPending ? (
         <Loading />
       ) : q.isError ? (
