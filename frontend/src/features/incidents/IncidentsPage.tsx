@@ -228,6 +228,8 @@ export function IncidentsPage() {
                         </td>
                         <td>
                           <b>{kindText(i.kind)}</b>
+                          {i.from_rafeeq && <span className={s.tag}>{t("Rafeeq")}</span>}
+                          {i.pilgrim_ok_at && i.status !== "resolved" && <span className={`${s.tag} ${s.fine}`}>{t("Says fine")}</span>}
                           <span className={`${u.sub} ${s.desc}`} dir="auto">
                             {i.description}
                           </span>

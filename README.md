@@ -64,6 +64,19 @@ It refuses any operator that is not a demonstration. To change the sample,
 edit `backend/scripts/make_demo_sample.py`, run it, and reload: the database and
 the web app's sample mode then show the same thing.
 
+## Rafeeq, the pilgrim's page
+
+Each pilgrim can carry a Rafeeq card: a QR code that opens their own page on
+their phone (`/r#rfq_…`). It has three calls for help (SOS, I am lost, unwell in
+the heat), their group leader's number and the Saudi emergency numbers, in
+English, Arabic, Indonesian, Urdu, Turkish and French. A call lands in the
+incident feed at once as urgent, with the phone's location when the pilgrim
+allows it.
+
+Make cards from a pilgrim's panel, or for a whole group from the group's page
+(**Rafeeq cards**), and print them. The link is shown only when a card is made;
+a new card stops the old one, and a card stops a week after the group leaves.
+
 ## A real operator
 
 ```bash

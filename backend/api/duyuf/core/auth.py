@@ -1,6 +1,6 @@
 """Who is calling, and what they may do.
 
-Three ways in, checked in this order:
+Three ways in for staff and integrations, checked in this order:
 
 1. `Authorization: Bearer dyf_…`: an API key from scripts/issue_key.py, for
    integrations. Only its SHA-256 is stored.
@@ -11,6 +11,10 @@ Three ways in, checked in this order:
    alone can never be used from elsewhere.
 3. With DUYUF_DEV_AUTH=1 (tests, curl on this Mac) `X-Duyuf-Tenant: <slug>` is
    accepted, as that operator's administrator. Off by default.
+
+A pilgrim comes in a fourth way, to their own Rafeeq page only: the secret on
+their card (`Bearer rfq_…`), checked by `card_holder`. A card opens nothing
+else; on any other route it is just an unknown key.
 
 Passwords are scrypt hashes (standard library). The app's database role
 cannot read them; checking a password, opening and closing sessions happen
@@ -28,10 +32,12 @@ from datetime import timedelta
 
 from fastapi import Depends, HTTPException, Request
 
+from ..rafeeq.help import DAYS_AFTER_DEPARTURE
 from .db import owner_session
 
 KEY_PREFIX = "dyf_"
 SESSION_PREFIX = "dys_"
+CARD_PREFIX = "rfq_"
 SESSION_COOKIE = "duyuf_session"
 CLIENT_HEADER = "x-duyuf-client"
 SESSION_HOURS = float(os.environ.get("DUYUF_SESSION_HOURS", "12") or 12)
@@ -47,15 +53,17 @@ LOCKOUT_WINDOW = timedelta(minutes=15)
 # Incidents are raised and worked by anyone on staff; viewers only follow them.
 # Anyone may ask the analyst: it sees totals only, never a person.
 # Only administrators add staff, change roles and reset passwords.
+# Anyone working with pilgrims hands out Rafeeq cards; viewers do not.
 ROLE_SCOPES: dict[str, frozenset[str]] = {
     "administrator": frozenset({"group:read", "group:write", "pilgrim:read", "pilgrim:write",
                                 "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write",
-                                "incident:read", "incident:write", "analyst:ask", "staff:manage"}),
+                                "incident:read", "incident:write", "analyst:ask", "staff:manage",
+                                "rafeeq:issue"}),
     "supervisor": frozenset({"group:read", "group:write", "pilgrim:read", "pilgrim:write",
                              "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write",
-                             "incident:read", "incident:write", "analyst:ask"}),
+                             "incident:read", "incident:write", "analyst:ask", "rafeeq:issue"}),
     "staff": frozenset({"group:read", "pilgrim:read", "pilgrim:status", "flight:read",
-                        "incident:read", "incident:write", "analyst:ask"}),
+                        "incident:read", "incident:write", "analyst:ask", "rafeeq:issue"}),
     "viewer": frozenset({"group:read", "pilgrim:read", "flight:read", "incident:read", "analyst:ask"}),
 }
 
@@ -90,6 +98,11 @@ def hash_key(key: str) -> str:
 
 def new_key() -> str:
     return KEY_PREFIX + secrets.token_urlsafe(32)
+
+
+def new_card_token() -> str:
+    # 18 bytes: as hard to guess as a key, short enough for a QR code a cheap phone reads
+    return CARD_PREFIX + secrets.token_urlsafe(18)
 
 
 def dev_auth_enabled() -> bool:
@@ -215,6 +228,41 @@ def require(scope: str):
             raise HTTPException(403, f"your role ({who.role}) may not do this: needs {scope}")
         return who
     return check
+
+
+# ---- a pilgrim's Rafeeq card ----
+
+@dataclass(frozen=True)
+class CardHolder:
+    """A pilgrim holding a Rafeeq card: their own page, and calls for help. Nothing else."""
+    tenant_id: str
+    card_id: str
+    pilgrim_id: str
+    language: str
+    is_demo: bool
+
+
+def card_holder(request: Request) -> CardHolder:
+    auth = request.headers.get("authorization", "")
+    token = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+    if not token.startswith(CARD_PREFIX):
+        raise HTTPException(401, "open Rafeeq from your card")
+    with owner_session() as conn:
+        row = conn.execute(
+            """SELECT c.id::text AS card_id, c.tenant_id::text, c.pilgrim_id::text, c.language, t.is_demo,
+                      (c.last_used_at IS NULL OR c.last_used_at < now() - interval '5 minutes') AS stale
+                 FROM rafeeq_card c
+                 JOIN tenant t ON t.id = c.tenant_id
+                 JOIN pilgrim p ON p.id = c.pilgrim_id
+                 JOIN pilgrim_group g ON g.id = p.group_id
+                WHERE c.token_hash = %s AND c.revoked_at IS NULL
+                  AND (g.departure_date IS NULL OR g.departure_date >= current_date - %s)""",
+            (hash_key(token), DAYS_AFTER_DEPARTURE)).fetchone()
+        if row and row.pop("stale"):
+            conn.execute("UPDATE rafeeq_card SET last_used_at = now() WHERE id = %s", (row["card_id"],))
+    if row is None:
+        raise HTTPException(401, "this card no longer works; ask your group leader for a new one")
+    return CardHolder(**row)
 
 
 # ---- signing in and out ----

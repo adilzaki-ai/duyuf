@@ -15,6 +15,7 @@ import type {
   FlightEvent,
   Group,
   GroupChange,
+  GroupCards,
   ImportProblem,
   ImportResult,
   Incident,
@@ -22,6 +23,7 @@ import type {
   IncidentEvent,
   IncidentFilter,
   IncidentList,
+  IssuedCard,
   JourneyStep,
   Me,
   MovingGroup,
@@ -37,6 +39,7 @@ import type {
   PilgrimDetail,
   PilgrimChange,
   PilgrimFilter,
+  RafeeqCardInfo,
   Scope,
   Shift,
   StaffChange,
@@ -45,6 +48,7 @@ import type {
   WhatIf,
 } from "../domain/types";
 import { addDays, ksaDate, ksaIso } from "../lib/dates";
+import { isRafeeqLang, type RafeeqLang } from "../rafeeq/help";
 import { DataSourceError, type DataSource } from "./dataSource";
 
 /**
@@ -94,6 +98,7 @@ const ALL_SCOPES: Scope[] = [
   "incident:write",
   "analyst:ask",
   "staff:manage",
+  "rafeeq:issue",
 ];
 
 /** A day offset and an hour as an instant, read on the Saudi clock (UTC+3, no daylight saving). */
@@ -258,6 +263,8 @@ export class MockSource implements DataSource {
         assigned_at: after(x.assigned_after),
         resolved_at: after(x.resolved_after),
         updated_at: history[history.length - 1].at,
+        from_rafeeq: false,
+        pilgrim_ok_at: null,
         history,
       });
     });
@@ -806,6 +813,8 @@ export class MockSource implements DataSource {
       assigned_at: null,
       resolved_at: null,
       updated_at: now,
+      from_rafeeq: false,
+      pilgrim_ok_at: null,
       history: [{ kind: "opened", note: null, team: null, actor: ACTOR, at: now }],
     });
     return this.incident(id);
@@ -872,6 +881,50 @@ export class MockSource implements DataSource {
 
   async analystRecent(): Promise<AnalystAnswer[]> {
     return [];
+  }
+
+  /* ---- Rafeeq cards: a sample card opens the sample Rafeeq page for that pilgrim; nothing is sent ---- */
+
+  private readonly cards = new Map<string, RafeeqCardInfo>();
+
+  async rafeeqCard(pilgrimId: string): Promise<RafeeqCardInfo | null> {
+    if (!this.people.has(pilgrimId)) throw new DataSourceError("no such pilgrim", { status: 404 });
+    return this.cards.get(pilgrimId) ?? null;
+  }
+
+  private card(pilgrimId: string, language?: RafeeqLang): IssuedCard {
+    const p = this.people.get(pilgrimId);
+    if (!p) throw new DataSourceError("no such pilgrim", { status: 404 });
+    if (p.status === "departed")
+      throw new DataSourceError("this pilgrim has left the Kingdom; a card would not help them", { status: 409 });
+    const lang = language ?? (isRafeeqLang(p.language) ? p.language : "en");
+    this.cards.set(pilgrimId, { language: lang, issued_by: ACTOR, issued_at: this.now(), last_used_at: null });
+    return {
+      token: `rfq_sample.${pilgrimId}.${lang}`,
+      language: lang,
+      pilgrim_id: pilgrimId,
+      full_name: p.full_name,
+      full_name_ar: p.full_name_ar,
+      group_code: p.group_code,
+      group_name: p.group_name,
+    };
+  }
+
+  async issueRafeeqCard(pilgrimId: string, language?: RafeeqLang): Promise<IssuedCard> {
+    return this.card(pilgrimId, language);
+  }
+
+  async stopRafeeqCard(pilgrimId: string): Promise<void> {
+    this.cards.delete(pilgrimId);
+  }
+
+  async issueGroupRafeeqCards(groupId: string, replace: boolean): Promise<GroupCards> {
+    if (!this.groupsById.has(groupId)) throw new DataSourceError("no such group", { status: 404 });
+    const on = [...this.people.values()]
+      .filter((p) => p.group_id === groupId && p.status !== "departed")
+      .sort((a, b) => a.full_name.localeCompare(b.full_name));
+    const kept = replace ? 0 : on.filter((p) => this.cards.has(p.id)).length;
+    return { cards: on.filter((p) => replace || !this.cards.has(p.id)).map((p) => this.card(p.id)), kept };
   }
 
   /* ---- signing in, and staff: the sample has no sign in; its staff list lives until reload ---- */

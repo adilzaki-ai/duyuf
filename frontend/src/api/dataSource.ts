@@ -8,10 +8,12 @@ import type {
   FlightDetail,
   Group,
   GroupChange,
+  GroupCards,
   ImportResult,
   IncidentDetail,
   IncidentFilter,
   IncidentList,
+  IssuedCard,
   Me,
   NewIncident,
   NewFlight,
@@ -28,7 +30,9 @@ import type {
   Pilgrim,
   PilgrimDetail,
   PilgrimFilter,
+  RafeeqCardInfo,
 } from "../domain/types";
+import type { RafeeqLang } from "../rafeeq/help";
 
 /**
  * Everything the screens read and write, behind one interface with two
@@ -83,6 +87,13 @@ export interface DataSource {
   signOut(): Promise<void>;
   /** Their own password. Every other session of theirs ends. */
   changePassword(current: string, next: string): Promise<Me>;
+  /** The pilgrim's Rafeeq card in use, if any. */
+  rafeeqCard(pilgrimId: string): Promise<RafeeqCardInfo | null>;
+  /** A new card; any card they had stops working. */
+  issueRafeeqCard(pilgrimId: string, language?: RafeeqLang): Promise<IssuedCard>;
+  stopRafeeqCard(pilgrimId: string): Promise<void>;
+  /** Cards for everyone still on the journey; with `replace`, those already handed out are replaced too. */
+  issueGroupRafeeqCards(groupId: string, replace: boolean): Promise<GroupCards>;
   staff(): Promise<StaffMember[]>;
   addStaff(s: NewStaff): Promise<StaffMember>;
   updateStaff(id: string, change: StaffChange): Promise<StaffMember>;

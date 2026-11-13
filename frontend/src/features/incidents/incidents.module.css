@@ -100,3 +100,29 @@
   white-space: pre-wrap;
   margin: 4px 0 0;
 }
+
+/* where a call came from, and a pilgrim saying they are fine */
+.tag {
+  display: inline-block;
+  margin-inline-start: 6px;
+  padding: 0 7px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  border: 1px solid var(--brand-2);
+  color: var(--brand-2);
+  vertical-align: 1px;
+}
+
+.fine {
+  border-color: var(--st-in_madinah);
+  background: color-mix(in srgb, var(--st-in_madinah) 12%, transparent);
+  color: var(--ink);
+}
+
+p.tag {
+  display: block;
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  font-size: 13px;
+}
