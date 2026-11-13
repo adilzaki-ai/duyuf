@@ -17,6 +17,7 @@ def _rows(conn, where: str = "", params: tuple = ()) -> list[dict]:
     return conn.execute(f"""
         SELECT g.id::text, g.code, g.name, g.kind, g.season, g.origin_country,
                g.arrival_date, g.departure_date, g.leader_name, g.leader_phone,
+               g.meeting_name, g.meeting_lat, g.meeting_lon,
                coalesce(c.total, 0) AS pilgrims, coalesce(c.by_status, '{{}}') AS by_status
           FROM pilgrim_group g
           LEFT JOIN LATERAL (
@@ -41,6 +42,10 @@ class GroupIn(BaseModel):
 
 
 class GroupPatch(BaseModel):
+    # where the group gathers: a name, and its place (both, or neither)
+    meeting_name: str | None = Field(default=None, max_length=80)
+    meeting_lat: float | None = Field(default=None, ge=-90, le=90)
+    meeting_lon: float | None = Field(default=None, ge=-180, le=180)
     name: str | None = Field(default=None, min_length=1)
     arrival_date: date | None = None
     departure_date: date | None = None

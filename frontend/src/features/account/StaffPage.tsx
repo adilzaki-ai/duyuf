@@ -7,12 +7,13 @@ import { fmtDateTime, t } from "../../i18n";
 import { ChangePassword } from "./ChangePassword";
 import s from "./account.module.css";
 
-export const ROLES: Role[] = ["administrator", "supervisor", "staff", "viewer"];
+export const ROLES: Role[] = ["administrator", "supervisor", "staff", "medic", "viewer"];
 const ROLE_EN: Record<Role, string> = {
   administrator: "Administrator",
   supervisor: "Supervisor",
   staff: "Desk staff",
   viewer: "Viewer",
+  medic: "Medic",
 };
 export const roleLabel = (r: string) => t(ROLE_EN[r as Role] ?? r);
 export const ROLE_LABELS_EN = Object.values(ROLE_EN);

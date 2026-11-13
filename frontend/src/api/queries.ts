@@ -292,3 +292,20 @@ export function useGroupRafeeqCards(groupId: string) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["rafeeq-card"] }),
   });
 }
+
+/* ---- health: medics and administrators ---- */
+
+export function useHealth() {
+  const { source } = useSession();
+  return useQuery({ queryKey: ["health"], queryFn: () => source.health(), refetchInterval: 15_000 });
+}
+
+export function usePilgrimHealth(pilgrimId: string | null) {
+  const { source } = useSession();
+  return useQuery({
+    queryKey: ["health", pilgrimId],
+    queryFn: () => source.pilgrimHealth(pilgrimId!),
+    enabled: !!pilgrimId,
+    refetchInterval: 15_000,
+  });
+}

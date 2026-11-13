@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { DataSourceError } from "../api/dataSource";
+import { resolvedDataSource } from "../config/env";
 import { AMBULANCE, EMERGENCY, isRafeeqLang, isRtl, NATIVE_NAMES, RAFEEQ_LANGUAGES, type HelpKind, type RafeeqLang } from "./help";
-import { cardToken, createRafeeqSource, type RafeeqCall, type RafeeqPage, type RafeeqSource } from "./source";
+import { FindMyWay } from "./FindMyWay";
+import { ConsentCard, Countdown, DemoTry, HealthPanel, HeatWarning, PlaceLine, useSharePlace } from "./HealthParts";
+import { cardToken, createRafeeqSource, type NewReading, type RafeeqCall, type RafeeqPage, type RafeeqSource } from "./source";
+import { WALK } from "./places";
 import { iso, say } from "./words";
 import r from "./rafeeq.module.css";
 
@@ -9,7 +13,10 @@ import r from "./rafeeq.module.css";
  * Rafeeq: the pilgrim's own page, opened from the QR code on their card.
  *
  * Three calls for help, their group leader's number and the emergency numbers,
- * in six languages, on a cheap phone with a weak signal. It never says a call
+ * in six languages, on a cheap phone with a weak signal. With the pilgrim's
+ * consent, their heart rate, temperature and water from a watch, and where
+ * they are; dangerous readings count down to a call for medical help
+ * (HealthParts.tsx). It never says a call
  * went out unless the platform took it: when it did not, it says so and shows
  * the numbers to call instead. The page is saved on the phone, so the numbers
  * are there even with no signal at all.
@@ -18,13 +25,17 @@ import r from "./rafeeq.module.css";
 const LANG_KEY = "rafeeq.lang";
 const PAGE_KEY = "rafeeq.page";
 const POLL_MS = 15_000;
+/* readings from a watch can arrive at any time; look for them, and for a countdown, this often */
+const HEALTH_POLL_MS = 20_000;
+const ALERT_POLL_MS = 2_000;
 
 type Start = () => Promise<RafeeqSource | null>;
 type Problem = "no-card" | "stopped" | "offline" | null;
-type View = { name: "home" } | { name: "heat" } | { name: "confirm"; kind: HelpKind } | { name: "failed"; kind: HelpKind };
+type View = { name: "home" } | { name: "heat" } | { name: "way" } | { name: "confirm"; kind: HelpKind } | { name: "failed"; kind: HelpKind };
 
 const defaultStart: Start = async () => {
-  const token = cardToken();
+  /* the sample needs no card: a demonstration opens straight on its invented pilgrim */
+  const token = cardToken() ?? (resolvedDataSource() === "mock" ? "rfq_sample" : null);
   return token ? createRafeeqSource(token) : null;
 };
 
@@ -88,7 +99,15 @@ function useVoice(lang: RafeeqLang): ((text: string) => void) | null {
   };
 }
 
-const KIND_NAME: Record<HelpKind, string> = { sos: "SOS", lost: "I am lost", heat: "Unwell in the heat" };
+/* the sample pilgrim stands near the Prophet's Mosque when the phone gives no place (the demo's viewer never does) */
+const SAMPLE_STAND = { lat: 24.4705, lon: 39.6046 };
+
+const KIND_NAME: Record<RafeeqCall["kind"], string> = {
+  sos: "SOS",
+  lost: "I am lost",
+  heat: "Unwell in the heat",
+  medical: "Medical alert",
+};
 
 const HEAT_ADVICE = [
   "Drink water often, even if you are not thirsty.",
@@ -98,7 +117,7 @@ const HEAT_ADVICE = [
 const HEAT_WARNING = "Headache, dizziness, sickness or very hot skin? Stop, find shade, drink water, and press the button below.";
 
 /** The English the page passes to say() through its tables, for the words test. */
-export const RAFEEQ_TABLE_LINES = [...Object.values(KIND_NAME), ...HEAT_ADVICE, HEAT_WARNING];
+export const RAFEEQ_TABLE_LINES = [...Object.values(KIND_NAME), ...HEAT_ADVICE, HEAT_WARNING, ...WALK];
 
 export function RafeeqApp({ start = defaultStart }: { start?: Start }) {
   const [lang, setLangState] = useState<RafeeqLang>(() => firstLang() ?? "en");
@@ -168,15 +187,43 @@ export function RafeeqApp({ start = defaultStart }: { start?: Start }) {
     document.title = say("Rafeeq", lang);
   }, [lang]);
 
-  /* while a call is still open, follow it */
+  /* while a call is open, a countdown runs or a watch may send readings, follow the page */
   const following = !!page?.calls.some((c) => c.status !== "resolved");
+  const counting = !!page?.alert;
+  const watching = !!page?.consent?.health;
+  const every = counting ? ALERT_POLL_MS : following ? POLL_MS : watching ? HEALTH_POLL_MS : null;
   useEffect(() => {
-    if (!source || !following) return;
-    const every = setInterval(() => {
+    if (!source || !every) return;
+    const timer = setInterval(() => {
       source.me().then(took, () => {});
-    }, POLL_MS);
-    return () => clearInterval(every);
-  }, [source, following]);
+    }, every);
+    return () => clearInterval(timer);
+  }, [source, every]);
+
+  useSharePlace(source, !!page?.consent?.location, following || counting);
+
+  const [busy, setBusy] = useState(false);
+  const act = async (go: (s: RafeeqSource) => Promise<RafeeqPage>) => {
+    if (!source) return;
+    setBusy(true);
+    try {
+      took(await go(source));
+    } catch (err) {
+      if (err instanceof DataSourceError && err.status === 409) source.me().then(took, () => {});
+      else failed(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const answer = (c: { health?: boolean; location?: boolean }) => void act((s) => s.consent(c));
+  const drank = () => void act((s) => s.water());
+  const imOk = (id: string) => void act((s) => s.iAmOk(id));
+  const demoReadings = (r: NewReading[]) => void act((s) => s.readings(r, "simulated"));
+  const demoPlace = () =>
+    void act(async (s) => {
+      await s.location(24.4672 + (Math.random() - 0.5) * 0.004, 39.6112 + (Math.random() - 0.5) * 0.004, 20, "simulated");
+      return s.me();
+    });
 
   const ask = (kind: HelpKind) => {
     where.current = whereAmI();
@@ -233,6 +280,14 @@ export function RafeeqApp({ start = defaultStart }: { start?: Start }) {
         <Numbers lang={lang} page={null} />
       </>
     );
+  } else if (page.alert && problem !== "offline") {
+    spoken = s("Your readings look dangerous.");
+    body = (
+      <>
+        <Countdown alert={page.alert} lang={lang} onOk={() => imOk(page.alert!.id)} speak={speak} />
+        <Numbers lang={lang} page={page} />
+      </>
+    );
   } else if (view.name === "confirm") {
     spoken = `${s(KIND_NAME[view.kind])}. ${s("Send a call for help now?")}`;
     body = (
@@ -266,6 +321,20 @@ export function RafeeqApp({ start = defaultStart }: { start?: Start }) {
         </button>
       </section>
     );
+  } else if (view.name === "way") {
+    spoken = `${s("Find my way")}. ${s("Where do you want to go?")}`;
+    body = (
+      <>
+        <FindMyWay
+          page={page}
+          lang={lang}
+          onStillLost={() => ask("lost")}
+          onBack={() => setView({ name: "home" })}
+          stand={source?.kind === "mock" ? SAMPLE_STAND : null}
+        />
+        <Numbers lang={lang} page={page} />
+      </>
+    );
   } else if (view.name === "heat") {
     const advice = HEAT_ADVICE;
     const warning = HEAT_WARNING;
@@ -293,6 +362,7 @@ export function RafeeqApp({ start = defaultStart }: { start?: Start }) {
       <>
         <h1 className={r.hello}>{s("Assalamu alaikum, {name}", { name: iso(name) })}</h1>
         <p className={r.quiet}>{s("Press a button if you need help.")}</p>
+        {!page.consent?.health && <HeatWarning lang={lang} />}
         {page.calls.map((c) => (
           <CallCard key={c.id} call={c} lang={lang} onFine={() => void fine(c)} />
         ))}
@@ -300,13 +370,22 @@ export function RafeeqApp({ start = defaultStart }: { start?: Start }) {
           <b>{s("SOS")}</b>
           <span>{s("Emergency: I need help now")}</span>
         </button>
-        <button type="button" className={`${r.big} ${r.lost}`} onClick={() => ask("lost")}>
+        <button type="button" className={`${r.big} ${r.lost}`} onClick={() => setView({ name: "way" })}>
           {s("I am lost")}
+          <span>{s("Find my way")}</span>
         </button>
         <button type="button" className={`${r.big} ${r.heat}`} onClick={() => setView({ name: "heat" })}>
           {s("Heat safety")}
         </button>
+        {page.consent && problem !== "offline" && <ConsentCard page={page} lang={lang} onAnswer={answer} />}
+        {page.consent?.health && page.health && (
+          <HealthPanel health={page.health} recent={page.recent ?? []} lang={lang} onWater={drank} busy={busy} />
+        )}
+        {page.consent && <PlaceLine page={page} lang={lang} onTurn={(on) => answer({ location: on })} />}
         <Numbers lang={lang} page={page} />
+        {(page.is_demo || source?.kind === "mock") && page.consent && (page.consent.health || page.consent.location) && (
+          <DemoTry lang={lang} page={page} send={demoReadings} place={demoPlace} />
+        )}
       </>
     );
   }

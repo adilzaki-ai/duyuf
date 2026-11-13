@@ -16,6 +16,8 @@ import type {
   Group,
   GroupChange,
   GroupCards,
+  HealthBoard,
+  HealthRow,
   ImportProblem,
   ImportResult,
   Incident,
@@ -39,6 +41,7 @@ import type {
   PilgrimDetail,
   PilgrimChange,
   PilgrimFilter,
+  PilgrimHealth,
   RafeeqCardInfo,
   Scope,
   Shift,
@@ -49,6 +52,7 @@ import type {
 } from "../domain/types";
 import { addDays, ksaDate, ksaIso } from "../lib/dates";
 import { isRafeeqLang, type RafeeqLang } from "../rafeeq/help";
+import { assess, type Reading } from "../rafeeq/vitals";
 import { DataSourceError, type DataSource } from "./dataSource";
 
 /**
@@ -99,6 +103,8 @@ const ALL_SCOPES: Scope[] = [
   "analyst:ask",
   "staff:manage",
   "rafeeq:issue",
+  "health:read",
+  "device:write",
 ];
 
 /** A day offset and an hour as an instant, read on the Saudi clock (UTC+3, no daylight saving). */
@@ -113,6 +119,8 @@ export class MockSource implements DataSource {
   private readonly today: string;
   /** a fixed moment in tests; the real clock otherwise, so "due" arrives as time passes */
   private readonly clock: () => Date;
+  /** "U-ID-0412|2" → the third pilgrim of that group, as sample/demo.json counts them */
+  private readonly byPlace = new Map<string, string>();
   private readonly groupsById = new Map<string, Omit<Group, "pilgrims" | "by_status">>();
   private readonly people = new Map<string, PilgrimDetail>();
   private readonly flights = new Map<string, FlightRecord>();
@@ -157,6 +165,9 @@ export class MockSource implements DataSource {
         departure_date: addDays(this.today, g.depart_in_days),
         leader_name: g.leader_name,
         leader_phone: g.leader_phone,
+        meeting_name: g.meeting?.name ?? null,
+        meeting_lat: g.meeting?.lat ?? null,
+        meeting_lon: g.meeting?.lon ?? null,
       });
     }
     sample.resources.forEach((r, i) => {
@@ -225,7 +236,7 @@ export class MockSource implements DataSource {
       });
     });
     const place = new Map<string, number>();
-    const byPlace = new Map<string, string>();
+    const byPlace = this.byPlace;
     sample.pilgrims.forEach((p, i) => {
       const n = place.get(p.group_code) ?? 0;
       byPlace.set(`${p.group_code}|${n}`, `p-${i}`);
@@ -632,6 +643,8 @@ export class MockSource implements DataSource {
     const next = { ...g, ...change };
     if (next.arrival_date && next.departure_date && next.departure_date < next.arrival_date)
       throw new DataSourceError("a value is not in the form expected: it leaves before it arrives", { status: 400 });
+    if ((next.meeting_lat == null) !== (next.meeting_lon == null) || (next.meeting_lat != null && !next.meeting_name))
+      throw new DataSourceError("a value is not in the form expected: a meeting point needs a name and a place", { status: 400 });
     this.groupsById.set(id, next);
     for (const p of this.people.values())
       if (p.group_id === id && next.name !== g.name) this.people.set(p.id, { ...p, group_name: next.name });
@@ -925,6 +938,75 @@ export class MockSource implements DataSource {
       .sort((a, b) => a.full_name.localeCompare(b.full_name));
     const kept = replace ? 0 : on.filter((p) => this.cards.has(p.id)).length;
     return { cards: on.filter((p) => replace || !this.cards.has(p.id)).map((p) => this.card(p.id)), kept };
+  }
+
+  /* ---- health: the sample's invented readings, judged by the same rules, times counted back from now ---- */
+
+  private sampleVitals() {
+    const t0 = this.clock().getTime();
+    const ago = (m: number) => new Date(t0 - m * 60_000).toISOString();
+    return sample.vitals.map((v) => ({
+      id: this.byPlace.get(`${v.group_code}|${v.pilgrim_index}`)!,
+      v,
+      readings: v.readings.map((r) => [ago(r.minutes_ago), r.heart_rate, r.temperature] as Reading),
+      water: v.water_minutes_ago != null && v.health ? ago(v.water_minutes_ago) : null,
+      place: { lat: v.place.lat, lon: v.place.lon, accuracy_m: v.place.accuracy_m, at: ago(v.place.minutes_ago), source: "simulated" as const },
+    }));
+  }
+
+  async health(): Promise<HealthBoard> {
+    const rank = { danger: 0, warning: 1, watch: 2, ok: 3, unknown: 4 };
+    const items: HealthRow[] = this.sampleVitals().map(({ id, v, readings, water, place }) => {
+      const p = this.people.get(id)!;
+      const health = v.health ? { ...assess(readings, water, this.clock()), simulated: true } : null;
+      return {
+        pilgrim_id: id,
+        full_name: p.full_name,
+        full_name_ar: p.full_name_ar,
+        status: p.status,
+        needs: p.needs,
+        group_id: p.group_id,
+        group_code: p.group_code,
+        group_name: p.group_name,
+        shares_health: v.health,
+        shares_location: true,
+        health,
+        place,
+        alert: null,
+      };
+    });
+    items.sort(
+      (a, b) => rank[a.health?.level ?? "unknown"] - rank[b.health?.level ?? "unknown"] || a.full_name.localeCompare(b.full_name),
+    );
+    const has = (x: HealthRow, r: string) => (x.health?.reasons as string[] | undefined)?.includes(r) ?? false;
+    return {
+      items,
+      stats: {
+        danger: items.filter((x) => x.health?.level === "danger").length,
+        fever: items.filter((x) => has(x, "fever")).length,
+        heart: items.filter((x) => ["heart_high", "heart_unstable", "heart_danger_high", "heart_danger_low"].some((r) => has(x, r))).length,
+        dehydration: items.filter((x) => has(x, "dehydration_risk")).length,
+        sharing_health: items.filter((x) => x.shares_health).length,
+        sharing_location: items.filter((x) => x.shares_location).length,
+        no_readings: items.filter((x) => x.health && x.health.heart.state === "unknown" && x.health.temperature.state === "unknown").length,
+        alerts: 0,
+      },
+      at: this.now(),
+    };
+  }
+
+  async pilgrimHealth(pilgrimId: string): Promise<PilgrimHealth> {
+    if (!this.people.has(pilgrimId)) throw new DataSourceError("no such pilgrim", { status: 404 });
+    const found = this.sampleVitals().find((x) => x.id === pilgrimId);
+    if (!found) return { consent: { health: false, location: false }, health: null, readings: [], alerts: [], places: [] };
+    const { v, readings, water, place } = found;
+    return {
+      consent: { health: v.health, location: true },
+      health: v.health ? { ...assess(readings, water, this.clock()), simulated: true } : null,
+      readings: readings.map(([at, heart_rate, temperature]) => ({ at, heart_rate, temperature, source: "simulated" })),
+      alerts: [],
+      places: [place],
+    };
   }
 
   /* ---- signing in, and staff: the sample has no sign in; its staff list lives until reload ---- */

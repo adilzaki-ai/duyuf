@@ -54,17 +54,23 @@ LOCKOUT_WINDOW = timedelta(minutes=15)
 # Anyone may ask the analyst: it sees totals only, never a person.
 # Only administrators add staff, change roles and reset passwords.
 # Anyone working with pilgrims hands out Rafeeq cards; viewers do not.
+# Health readings are special personal data (PDPL): only medics and
+# administrators read them. A medic otherwise follows pilgrims and works
+# incidents. device:write is for a wearable maker's system sending readings
+# with a key; give such a key to an administrator account kept for it.
 ROLE_SCOPES: dict[str, frozenset[str]] = {
     "administrator": frozenset({"group:read", "group:write", "pilgrim:read", "pilgrim:write",
                                 "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write",
                                 "incident:read", "incident:write", "analyst:ask", "staff:manage",
-                                "rafeeq:issue"}),
+                                "rafeeq:issue", "health:read", "device:write"}),
     "supervisor": frozenset({"group:read", "group:write", "pilgrim:read", "pilgrim:write",
                              "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write",
                              "incident:read", "incident:write", "analyst:ask", "rafeeq:issue"}),
     "staff": frozenset({"group:read", "pilgrim:read", "pilgrim:status", "flight:read",
                         "incident:read", "incident:write", "analyst:ask", "rafeeq:issue"}),
     "viewer": frozenset({"group:read", "pilgrim:read", "flight:read", "incident:read", "analyst:ask"}),
+    "medic": frozenset({"group:read", "pilgrim:read", "flight:read", "incident:read", "incident:write",
+                        "health:read"}),
 }
 
 

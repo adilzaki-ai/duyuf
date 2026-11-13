@@ -77,6 +77,35 @@ Make cards from a pilgrim's panel, or for a whole group from the group's page
 (**Rafeeq cards**), and print them. The link is shown only when a card is made;
 a new card stops the old one, and a card stops a week after the group leaves.
 
+### Health and place
+
+With the pilgrim's consent, asked on their page and withdrawn there at any
+time, Rafeeq also carries their heart rate and temperature from a wearable,
+reminds them to drink, and shares where they are. Readings come from the page
+or from a wearable maker's system (`POST /v1/devices/readings`, a key with
+`device:write`).
+
+Dangerous readings (a very fast or slow heart, a high fever, or a fever with a
+fast or unsteady heart) fill the phone with a 30-second countdown and one big
+**I AM OK** button. If nobody presses it, the platform raises an urgent medical
+incident with the pilgrim's last place, even if the phone has gone quiet.
+
+The **Health** screen lists everyone sharing, the most serious first. Only
+medics and administrators see readings; other staff see the alert and where to
+go. **Every danger level is proposed until a doctor agrees it** (see
+`backend/api/duyuf/health/rules.py`). The page shares the place only while it
+is open; background tracking needs the phone app.
+
+### Find my way
+
+"I am lost" first shows the way: where the pilgrim is, where most of their
+group is now (the middle of those sharing their place, when three or more do),
+the group's meeting point (set on the group's page), and the holy sites, with
+walking directions in the phone's maps app. Calling for help stays one press
+away. The map uses OpenStreetMap's public tiles, which is fine for a pilot;
+an app in a real season needs OSM's permission, or a small map of Makkah and
+Madinah served from our own server.
+
 ## A real operator
 
 ```bash

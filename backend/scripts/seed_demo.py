@@ -32,6 +32,7 @@ DEMO_STAFF = [
     ("omar@duyuf.demo", "Omar Siddiqui", "supervisor"),
     ("desk@duyuf.demo", "Arrivals desk", "staff"),
     ("viewer@duyuf.demo", "Ministry visitor", "viewer"),
+    ("medic@duyuf.demo", "Dr Huda Al-Qahtani", "medic"),
 ]
 DEMO_PASSWORD = os.environ.get("DUYUF_DEMO_PASSWORD", "duyuf-demo-1448")
 
@@ -49,7 +50,8 @@ def seed(reset: bool = False) -> dict:
                                 (tid,)).fetchone()["n"]
         if existing and not reset:
             raise SystemExit(f"{op['slug']} already holds {existing} groups; pass --reset to reload")
-        for table in ("incident_event", "incident", "rafeeq_card", "pilgrim_event", "pilgrim", "flight_event", "flight",
+        for table in ("health_alert", "vital_reading", "water_log", "pilgrim_location", "pilgrim_consent",
+                      "incident_event", "incident", "rafeeq_card", "pilgrim_event", "pilgrim", "flight_event", "flight",
                       "pilgrim_group", "resource_shift"):
             conn.execute(f"""DELETE FROM {table} x USING tenant t
                               WHERE x.tenant_id = t.id AND t.id = %s AND t.is_demo""", (tid,))
@@ -125,6 +127,28 @@ def seed(reset: bool = False) -> dict:
             for kind, team, note, actor, at in steps:
                 conn.execute(f"""INSERT INTO incident_event (tenant_id, incident_id, kind, team, note, actor, at)
                                  VALUES (%s, %s, %s, %s, %s, %s, {at})""", (tid, iid, kind, team, note, actor))
+        for g in data["groups"]:
+            if g.get("meeting"):
+                conn.execute("""UPDATE pilgrim_group SET meeting_name = %s, meeting_lat = %s, meeting_lon = %s
+                                WHERE id = %s""", (g["meeting"]["name"], g["meeting"]["lat"], g["meeting"]["lon"],
+                                                   gid[g["code"]]))
+        # Health readings and places, from pilgrims who agreed; times counted back from now.
+        for v in data.get("vitals", []):
+            pid = by_place[(v["group_code"], v["pilgrim_index"])]
+            conn.execute("""INSERT INTO pilgrim_consent (tenant_id, pilgrim_id, health_at, location_at)
+                            VALUES (%s, %s, CASE WHEN %s THEN now() - interval '2 days' END, now() - interval '2 days')""",
+                         (tid, pid, v["health"]))
+            for r in v["readings"]:
+                conn.execute("""INSERT INTO vital_reading (tenant_id, pilgrim_id, at, heart_rate, temperature, source, device)
+                                VALUES (%s, %s, now() - make_interval(mins => %s), %s, %s, 'simulated', 'Demo band')""",
+                             (tid, pid, r["minutes_ago"], r["heart_rate"], r["temperature"]))
+            if v["water_minutes_ago"] is not None and v["health"]:
+                conn.execute("INSERT INTO water_log (tenant_id, pilgrim_id, at) VALUES (%s, %s, now() - make_interval(mins => %s))",
+                             (tid, pid, v["water_minutes_ago"]))
+            pl = v["place"]
+            conn.execute("""INSERT INTO pilgrim_location (tenant_id, pilgrim_id, at, lat, lon, accuracy_m, source)
+                            VALUES (%s, %s, now() - make_interval(mins => %s), %s, %s, %s, 'simulated')""",
+                         (tid, pid, pl["minutes_ago"], pl["lat"], pl["lon"], pl["accuracy_m"]))
     for email, name, role in DEMO_STAFF:
         set_login(op["slug"], email, name, role, DEMO_PASSWORD, must_change=False)
     counts = {"groups": len(data["groups"]), "pilgrims": len(data["pilgrims"]), "flights": len(data["flights"]),

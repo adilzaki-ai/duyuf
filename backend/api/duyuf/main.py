@@ -10,7 +10,9 @@ Docs: http://localhost:8100/docs
 """
 from __future__ import annotations
 
+import asyncio
 import os
+from contextlib import asynccontextmanager
 
 import psycopg.errors
 from fastapi import Depends, FastAPI, Request
@@ -19,12 +21,23 @@ from fastapi.responses import JSONResponse
 
 from .core.auth import Identity, identity
 from .core.db import PoolUnavailable, healthy
-from .routers import (analyst, arrivals, groups, imports, incidents, overview, pilgrims, rafeeq, resources,
-                      session, staff)
+from .core.jobs import run_forever
+from .routers import (analyst, arrivals, groups, health, imports, incidents, overview, pilgrims, rafeeq,
+                      resources, session, staff)
 
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 
-app = FastAPI(title="Duyuf Platform API", version=VERSION,
+@asynccontextmanager
+async def _lifespan(_: FastAPI):
+    # Sends automatic medical alerts whose countdown ran out (core/jobs.py).
+    jobs = asyncio.create_task(run_forever())
+    try:
+        yield
+    finally:
+        jobs.cancel()
+
+
+app = FastAPI(title="Duyuf Platform API", version=VERSION, lifespan=_lifespan,
               description="Hajj and Umrah operations: groups, pilgrims, journeys, arrivals, and Rafeeq, the pilgrim's own page.")
 
 
@@ -75,6 +88,7 @@ app.include_router(analyst.router)
 app.include_router(session.router)
 app.include_router(staff.router)
 app.include_router(rafeeq.router)
+app.include_router(health.router)
 
 
 @app.get("/health", tags=["platform"])

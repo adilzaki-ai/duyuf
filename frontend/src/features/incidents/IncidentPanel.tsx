@@ -6,6 +6,7 @@ import { Failed, Loading, u } from "../../design/ui";
 import { incidentStatusLabel } from "../../domain/incidents";
 import type { IncidentEvent } from "../../domain/types";
 import { fmtDateTime, t } from "../../i18n";
+import { IncidentHealth, PlaceText } from "../health/HealthPage";
 import p from "../pilgrims/pilgrims.module.css";
 import s from "./incidents.module.css";
 import { kindText, PriorityChip, since } from "./parts";
@@ -57,7 +58,11 @@ export function IncidentPanel({ id, teams, onClose }: { id: string; teams: strin
           <p className={s.text} dir="auto">
             {q.data.description}
           </p>
-          {q.data.from_rafeeq && <p className={u.hint}>{t("Sent by the pilgrim from their Rafeeq page.")}</p>}
+          {q.data.reported_by === "Rafeeq health alert" ? (
+            <p className={u.hint}>{t("Sent automatically: the pilgrim's readings were dangerous and nobody pressed “I am OK”.")}</p>
+          ) : (
+            q.data.from_rafeeq && <p className={u.hint}>{t("Sent by the pilgrim from their Rafeeq page.")}</p>
+          )}
           {q.data.pilgrim_ok_at && q.data.status !== "resolved" && (
             <p className={`${s.tag} ${s.fine}`}>{t("The pilgrim said they are fine at {time}.", { time: fmtDateTime(q.data.pilgrim_ok_at) })}</p>
           )}
@@ -99,6 +104,12 @@ export function IncidentPanel({ id, teams, onClose }: { id: string; teams: strin
                 )}
               </span>
             </li>
+            {q.data.live_location && (
+              <li>
+                <span>{t("Live place")}</span>
+                <PlaceText place={q.data.live_location} />
+              </li>
+            )}
             <li>
               <span>{t("Team")}</span>
               <span dir="auto">{q.data.team ?? "—"}</span>
@@ -110,6 +121,7 @@ export function IncidentPanel({ id, teams, onClose }: { id: string; teams: strin
               </span>
             </li>
           </ul>
+          {q.data.health && <IncidentHealth health={q.data.health} />}
           {q.data.resolution && (
             <>
               <h3 className={p.h3}>{t("How it was resolved")}</h3>

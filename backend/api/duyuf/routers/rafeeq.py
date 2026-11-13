@@ -3,7 +3,10 @@
 A card is a link with a secret in it, printed as a QR code and handed to one
 pilgrim. It opens their page: their group leader's number, and three calls
 for help (SOS, lost, unwell in the heat) that land in the incident feed at
-once as urgent. The card reads nothing else and changes nothing else. Only
+once as urgent. With the pilgrim's consent it also carries their health
+readings and where they are (health/record.py); dangerous readings count
+down on the page and, unless they press "I am OK", raise a medical
+incident. The card reads nothing else and changes nothing else. Only
 its hash is kept, so a lost card is replaced, never shown again, and a new
 card stops the old one.
 
@@ -11,13 +14,15 @@ Safety help only: Rafeeq gives no religious rulings.
 """
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from ..core.auth import CardHolder, Identity, card_holder, hash_key, new_card_token, require
 from ..core.db import tenant_session
+from ..health import record
 from ..rafeeq.help import (ACTOR, CALLS_PER_HOUR, FINE_NOTE, HELP, LANGUAGES, PRESSED_AGAIN,
                            description)
 
@@ -118,8 +123,10 @@ def _page(conn, card: CardHolder) -> dict:
     """What the page shows: who they are, who to call, and their calls for help still going
     (and those closed in the last 12 hours, so they see the answer)."""
     row = conn.execute(
-        """SELECT p.full_name, p.full_name_ar, g.code AS group_code, g.name AS group_name,
-                  g.leader_name, g.leader_phone, t.name AS operator, t.name_ar AS operator_ar
+        """SELECT p.full_name, p.full_name_ar, p.group_id::text AS gid, g.code AS group_code, g.name AS group_name,
+                  g.leader_name, g.leader_phone, t.name AS operator, t.name_ar AS operator_ar,
+                  CASE WHEN g.meeting_lat IS NOT NULL THEN
+                       jsonb_build_object('name', g.meeting_name, 'lat', g.meeting_lat, 'lon', g.meeting_lon) END AS meeting
              FROM pilgrim p JOIN pilgrim_group g ON g.id = p.group_id JOIN tenant t ON t.id = p.tenant_id
             WHERE p.id = %s""", (card.pilgrim_id,)).fetchone()
     calls = conn.execute(
@@ -127,7 +134,18 @@ def _page(conn, card: CardHolder) -> dict:
              WHERE pilgrim_id = %s AND rafeeq_card_id IS NOT NULL
                AND (status <> 'resolved' OR resolved_at > now() - interval '12 hours')
              ORDER BY (status = 'resolved'), opened_at DESC LIMIT 5""", (card.pilgrim_id,)).fetchall()
-    return {**row, "language": card.language, "is_demo": card.is_demo, "calls": calls}
+    agreed = record.consent(conn, card.pilgrim_id)
+    place = record.last_place(conn, card.pilgrim_id) if agreed["location"] else None
+    group = record.group_centre(conn, row.pop("gid"), card.pilgrim_id)
+    recent = conn.execute(
+        """SELECT at, heart_rate, temperature::float AS temperature FROM vital_reading
+            WHERE pilgrim_id = %s AND at > now() - interval '2 hours' ORDER BY at DESC LIMIT 12""",
+        (card.pilgrim_id,)).fetchall() if agreed["health"] else []
+    return {**row, "group_now": group, "recent": recent,
+            "language": card.language, "is_demo": card.is_demo, "calls": calls, "consent": agreed,
+            "health": record.state(conn, card.pilgrim_id) if agreed["health"] else None,
+            "alert": record.counting(conn, card.pilgrim_id) if agreed["health"] else None,
+            "location_at": place["at"] if place else None}
 
 
 class HelpIn(BaseModel):
@@ -198,4 +216,85 @@ def say_fine(incident_id: str, card: CardHolder = Depends(card_holder)):
         if row["first"]:
             conn.execute("INSERT INTO incident_event (incident_id, kind, note, actor) VALUES (%s, 'note', %s, %s)",
                          (incident_id, FINE_NOTE, ACTOR))
+        return _page(conn, card)
+
+
+# ---- health and place, with consent ----
+
+class ConsentIn(BaseModel):
+    # leave one out to keep it as it is; false withdraws it and removes what was shared
+    health: bool | None = None
+    location: bool | None = None
+
+
+class ReadingIn(BaseModel):
+    at: datetime | None = None
+    heart_rate: int | None = Field(default=None, ge=20, le=250)
+    temperature: float | None = Field(default=None, ge=30, le=45)
+
+    @model_validator(mode="after")
+    def _something(self):
+        if self.heart_rate is None and self.temperature is None:
+            raise ValueError("a reading needs a heart rate or a temperature")
+        return self
+
+
+class ReadingsIn(BaseModel):
+    readings: list[ReadingIn] = Field(min_length=1, max_length=500)
+    # simulated: the demonstration's buttons; refused on a real operator
+    source: Literal["device", "simulated"] = "device"
+    device: str | None = Field(default=None, max_length=80)
+
+
+class PlaceIn(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    accuracy_m: float | None = Field(default=None, ge=0, le=100_000)
+    at: datetime | None = None
+    source: Literal["phone", "simulated"] = "phone"
+
+
+def _demo_only(card: CardHolder, source: str) -> None:
+    if source == "simulated" and not card.is_demo:
+        raise HTTPException(403, "simulated readings are for demonstration operators only")
+
+
+@router.post("/v1/rafeeq/consent")
+def give_consent(body: ConsentIn, card: CardHolder = Depends(card_holder)):
+    with tenant_session(card.tenant_id) as conn:
+        record.set_consent(conn, card.pilgrim_id, body.health, body.location)
+        return _page(conn, card)
+
+
+@router.post("/v1/rafeeq/readings")
+def send_readings(body: ReadingsIn, card: CardHolder = Depends(card_holder)):
+    """From a watch paired with this card, or the page itself. Dangerous readings start the countdown."""
+    _demo_only(card, body.source)
+    with tenant_session(card.tenant_id) as conn:
+        record.take_readings(conn, card.pilgrim_id, [r.model_dump() for r in body.readings], body.source, body.device)
+        return _page(conn, card)
+
+
+@router.post("/v1/rafeeq/water")
+def drank_water(card: CardHolder = Depends(card_holder)):
+    with tenant_session(card.tenant_id) as conn:
+        record.take_water(conn, card.pilgrim_id)
+        return _page(conn, card)
+
+
+@router.post("/v1/rafeeq/location", status_code=204)
+def send_place(body: PlaceIn, card: CardHolder = Depends(card_holder)):
+    """Where the phone is. Often, so it answers with nothing."""
+    _demo_only(card, body.source)
+    with tenant_session(card.tenant_id) as conn:
+        record.take_location(conn, card.pilgrim_id, body.lat, body.lon, body.accuracy_m, body.at, body.source)
+    return Response(status_code=204)
+
+
+@router.post("/v1/rafeeq/alert/{alert_id}/ok")
+def i_am_ok(alert_id: str, card: CardHolder = Depends(card_holder)):
+    """"I am OK": the countdown stops and nothing is sent."""
+    with tenant_session(card.tenant_id) as conn:
+        if not record.cancel(conn, card.pilgrim_id, alert_id):
+            raise HTTPException(409, "too late to stop it: help has already been called")
         return _page(conn, card)

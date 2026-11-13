@@ -15,7 +15,8 @@
    "arrive_in_days": -16,
    "depart_in_days": -2,
    "leader_name": "Hafiz Rahman",
-   "leader_phone": "+966 55 020 2135"
+   "leader_phone": "+966 55 020 2135",
+   "meeting": null
   },
   {
    "code": "U-ID-0412",
@@ -26,7 +27,12 @@
    "arrive_in_days": -10,
    "depart_in_days": 2,
    "leader_name": "Budi Lestari",
-   "leader_phone": "+966 55 040 1269"
+   "leader_phone": "+966 55 040 1269",
+   "meeting": {
+    "name": "Hotel lobby, Al-Salam street",
+    "lat": 24.4689,
+    "lon": 39.6081
+   }
   },
   {
    "code": "U-GB-0044",
@@ -37,7 +43,12 @@
    "arrive_in_days": -6,
    "depart_in_days": 1,
    "leader_name": "Idris Patel",
-   "leader_phone": "+966 55 000 4485"
+   "leader_phone": "+966 55 000 4485",
+   "meeting": {
+    "name": "Gate 21, Prophet's Mosque",
+    "lat": 24.4686,
+    "lon": 39.6128
+   }
   },
   {
    "code": "U-PK-0318",
@@ -48,7 +59,12 @@
    "arrive_in_days": -4,
    "depart_in_days": 10,
    "leader_name": "Muhammad Malik",
-   "leader_phone": "+966 55 030 1842"
+   "leader_phone": "+966 55 030 1842",
+   "meeting": {
+    "name": "King Abdulaziz Gate",
+    "lat": 21.4219,
+    "lon": 39.8247
+   }
   },
   {
    "code": "U-EG-0207",
@@ -59,7 +75,8 @@
    "arrive_in_days": 1,
    "depart_in_days": 15,
    "leader_name": "Ahmed Farouk",
-   "leader_phone": "+966 55 020 0751"
+   "leader_phone": "+966 55 020 0751",
+   "meeting": null
   },
   {
    "code": "U-TR-0155",
@@ -70,7 +87,8 @@
    "arrive_in_days": 3,
    "depart_in_days": 12,
    "leader_name": "Hasan Kaya",
-   "leader_phone": "+966 55 010 5530"
+   "leader_phone": "+966 55 010 5530",
+   "meeting": null
   },
   {
    "code": "U-NG-0090",
@@ -81,7 +99,8 @@
    "arrive_in_days": 6,
    "depart_in_days": 20,
    "leader_name": "Musa Usman",
-   "leader_phone": "+966 55 000 9094"
+   "leader_phone": "+966 55 000 9094",
+   "meeting": null
   },
   {
    "code": "U-BD-0310",
@@ -92,7 +111,8 @@
    "arrive_in_days": 12,
    "depart_in_days": 26,
    "leader_name": "Kamal Islam",
-   "leader_phone": "+966 55 030 1055"
+   "leader_phone": "+966 55 030 1055",
+   "meeting": null
   },
   {
    "code": "H-ID-0001",
@@ -103,7 +123,8 @@
    "arrive_in_days": 182,
    "depart_in_days": 222,
    "leader_name": "Agus Saputra",
-   "leader_phone": "+966 55 000 0113"
+   "leader_phone": "+966 55 000 0113",
+   "meeting": null
   },
   {
    "code": "H-PK-0007",
@@ -114,7 +135,8 @@
    "arrive_in_days": 185,
    "depart_in_days": 220,
    "leader_name": "Bilal Khan",
-   "leader_phone": "+966 55 000 0758"
+   "leader_phone": "+966 55 000 0758",
+   "meeting": null
   },
   {
    "code": "H-IN-0012",
@@ -125,7 +147,8 @@
    "arrive_in_days": 184,
    "depart_in_days": 224,
    "leader_name": "Irfan Siddiqui",
-   "leader_phone": "+966 55 000 1214"
+   "leader_phone": "+966 55 000 1214",
+   "meeting": null
   },
   {
    "code": "H-JO-0003",
@@ -136,7 +159,8 @@
    "arrive_in_days": 190,
    "depart_in_days": 212,
    "leader_name": "Khaled Al-Khatib",
-   "leader_phone": "+966 55 000 0368"
+   "leader_phone": "+966 55 000 0368",
+   "meeting": null
   },
   {
    "code": "U-PK-0322",
@@ -147,7 +171,8 @@
    "arrive_in_days": 0,
    "depart_in_days": 14,
    "leader_name": "Bilal Chaudhry",
-   "leader_phone": "+966 55 030 2233"
+   "leader_phone": "+966 55 030 2233",
+   "meeting": null
   },
   {
    "code": "U-ID-0430",
@@ -158,7 +183,8 @@
    "arrive_in_days": 1,
    "depart_in_days": 13,
    "leader_name": "Rizki Wijaya",
-   "leader_phone": "+966 55 040 3083"
+   "leader_phone": "+966 55 040 3083",
+   "meeting": null
   },
   {
    "code": "U-IN-0118",
@@ -169,7 +195,8 @@
    "arrive_in_days": 2,
    "depart_in_days": 16,
    "leader_name": "Salim Siddiqui",
-   "leader_phone": "+966 55 010 1864"
+   "leader_phone": "+966 55 010 1864",
+   "meeting": null
   },
   {
    "code": "U-NG-0095",
@@ -180,7 +207,8 @@
    "arrive_in_days": 2,
    "depart_in_days": 17,
    "leader_name": "Abubakar Bello",
-   "leader_phone": "+966 55 000 9586"
+   "leader_phone": "+966 55 000 9586",
+   "meeting": null
   }
  ],
  "pilgrims": [
@@ -16236,6 +16264,742 @@
    "team": "Madinah field team",
    "resolved_after": 48,
    "resolution": "Found at the mosque clinic; back at the hotel."
+  }
+ ],
+ "vitals": [
+  {
+   "group_code": "U-ID-0412",
+   "pilgrim_index": 0,
+   "pattern": "fever",
+   "health": true,
+   "water_minutes_ago": 140,
+   "readings": [
+    {
+     "minutes_ago": 60,
+     "heart_rate": 97,
+     "temperature": 38.6
+    },
+    {
+     "minutes_ago": 55,
+     "heart_rate": 103,
+     "temperature": 38.6
+    },
+    {
+     "minutes_ago": 50,
+     "heart_rate": 97,
+     "temperature": 38.3
+    },
+    {
+     "minutes_ago": 45,
+     "heart_rate": 101,
+     "temperature": 38.4
+    },
+    {
+     "minutes_ago": 40,
+     "heart_rate": 99,
+     "temperature": 38.5
+    },
+    {
+     "minutes_ago": 35,
+     "heart_rate": 103,
+     "temperature": 38.5
+    },
+    {
+     "minutes_ago": 30,
+     "heart_rate": 101,
+     "temperature": 38.6
+    },
+    {
+     "minutes_ago": 25,
+     "heart_rate": 101,
+     "temperature": 38.5
+    },
+    {
+     "minutes_ago": 20,
+     "heart_rate": 96,
+     "temperature": 38.5
+    },
+    {
+     "minutes_ago": 15,
+     "heart_rate": 103,
+     "temperature": 38.4
+    },
+    {
+     "minutes_ago": 10,
+     "heart_rate": 98,
+     "temperature": 38.3
+    },
+    {
+     "minutes_ago": 5,
+     "heart_rate": 102,
+     "temperature": 38.4
+    },
+    {
+     "minutes_ago": 0,
+     "heart_rate": 100,
+     "temperature": 38.5
+    }
+   ],
+   "place": {
+    "lat": 24.46399,
+    "lon": 39.61326,
+    "accuracy_m": 12,
+    "minutes_ago": 5
+   }
+  },
+  {
+   "group_code": "U-ID-0412",
+   "pilgrim_index": 1,
+   "pattern": "normal",
+   "health": true,
+   "water_minutes_ago": 30,
+   "readings": [
+    {
+     "minutes_ago": 60,
+     "heart_rate": 81,
+     "temperature": 37.0
+    },
+    {
+     "minutes_ago": 55,
+     "heart_rate": 81,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 50,
+     "heart_rate": 80,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 45,
+     "heart_rate": 74,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 40,
+     "heart_rate": 82,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 35,
+     "heart_rate": 88,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 30,
+     "heart_rate": 80,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 25,
+     "heart_rate": 74,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 20,
+     "heart_rate": 79,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 15,
+     "heart_rate": 73,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 10,
+     "heart_rate": 86,
+     "temperature": 37.0
+    },
+    {
+     "minutes_ago": 5,
+     "heart_rate": 83,
+     "temperature": 37.0
+    },
+    {
+     "minutes_ago": 0,
+     "heart_rate": 75,
+     "temperature": 36.6
+    }
+   ],
+   "place": {
+    "lat": 24.46489,
+    "lon": 39.61454,
+    "accuracy_m": 8,
+    "minutes_ago": 1
+   }
+  },
+  {
+   "group_code": "U-ID-0412",
+   "pilgrim_index": 2,
+   "pattern": "strained",
+   "health": true,
+   "water_minutes_ago": 115,
+   "readings": [
+    {
+     "minutes_ago": 60,
+     "heart_rate": 117,
+     "temperature": 37.9
+    },
+    {
+     "minutes_ago": 55,
+     "heart_rate": 115,
+     "temperature": 37.9
+    },
+    {
+     "minutes_ago": 50,
+     "heart_rate": 112,
+     "temperature": 37.8
+    },
+    {
+     "minutes_ago": 45,
+     "heart_rate": 112,
+     "temperature": 37.9
+    },
+    {
+     "minutes_ago": 40,
+     "heart_rate": 114,
+     "temperature": 37.9
+    },
+    {
+     "minutes_ago": 35,
+     "heart_rate": 116,
+     "temperature": 37.8
+    },
+    {
+     "minutes_ago": 30,
+     "heart_rate": 113,
+     "temperature": 37.9
+    },
+    {
+     "minutes_ago": 25,
+     "heart_rate": 118,
+     "temperature": 37.9
+    },
+    {
+     "minutes_ago": 20,
+     "heart_rate": 118,
+     "temperature": 37.8
+    },
+    {
+     "minutes_ago": 15,
+     "heart_rate": 117,
+     "temperature": 37.8
+    },
+    {
+     "minutes_ago": 10,
+     "heart_rate": 115,
+     "temperature": 37.8
+    },
+    {
+     "minutes_ago": 5,
+     "heart_rate": 116,
+     "temperature": 37.9
+    },
+    {
+     "minutes_ago": 0,
+     "heart_rate": 118,
+     "temperature": 37.9
+    }
+   ],
+   "place": {
+    "lat": 24.46574,
+    "lon": 39.61514,
+    "accuracy_m": 35,
+    "minutes_ago": 2
+   }
+  },
+  {
+   "group_code": "U-ID-0412",
+   "pilgrim_index": 4,
+   "pattern": "normal",
+   "health": true,
+   "water_minutes_ago": 50,
+   "readings": [
+    {
+     "minutes_ago": 60,
+     "heart_rate": 88,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 55,
+     "heart_rate": 83,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 50,
+     "heart_rate": 86,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 45,
+     "heart_rate": 78,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 40,
+     "heart_rate": 76,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 35,
+     "heart_rate": 88,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 30,
+     "heart_rate": 88,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 25,
+     "heart_rate": 81,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 20,
+     "heart_rate": 80,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 15,
+     "heart_rate": 85,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 10,
+     "heart_rate": 78,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 5,
+     "heart_rate": 77,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 0,
+     "heart_rate": 81,
+     "temperature": 36.9
+    }
+   ],
+   "place": {
+    "lat": 24.46771,
+    "lon": 39.60746,
+    "accuracy_m": 12,
+    "minutes_ago": 3
+   }
+  },
+  {
+   "group_code": "U-GB-0044",
+   "pilgrim_index": 0,
+   "pattern": "fast_heart",
+   "health": true,
+   "water_minutes_ago": 40,
+   "readings": [
+    {
+     "minutes_ago": 60,
+     "heart_rate": 125,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 55,
+     "heart_rate": 124,
+     "temperature": 37.1
+    },
+    {
+     "minutes_ago": 50,
+     "heart_rate": 127,
+     "temperature": 37.0
+    },
+    {
+     "minutes_ago": 45,
+     "heart_rate": 130,
+     "temperature": 37.2
+    },
+    {
+     "minutes_ago": 40,
+     "heart_rate": 126,
+     "temperature": 37.1
+    },
+    {
+     "minutes_ago": 35,
+     "heart_rate": 127,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 30,
+     "heart_rate": 130,
+     "temperature": 37.2
+    },
+    {
+     "minutes_ago": 25,
+     "heart_rate": 126,
+     "temperature": 37.2
+    },
+    {
+     "minutes_ago": 20,
+     "heart_rate": 130,
+     "temperature": 37.1
+    },
+    {
+     "minutes_ago": 15,
+     "heart_rate": 130,
+     "temperature": 37.2
+    },
+    {
+     "minutes_ago": 10,
+     "heart_rate": 129,
+     "temperature": 37.0
+    },
+    {
+     "minutes_ago": 5,
+     "heart_rate": 130,
+     "temperature": 37.2
+    },
+    {
+     "minutes_ago": 0,
+     "heart_rate": 128,
+     "temperature": 37.2
+    }
+   ],
+   "place": {
+    "lat": 24.46821,
+    "lon": 39.61518,
+    "accuracy_m": 12,
+    "minutes_ago": 2
+   }
+  },
+  {
+   "group_code": "U-GB-0044",
+   "pilgrim_index": 1,
+   "pattern": "normal",
+   "health": true,
+   "water_minutes_ago": 20,
+   "readings": [
+    {
+     "minutes_ago": 60,
+     "heart_rate": 73,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 55,
+     "heart_rate": 87,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 50,
+     "heart_rate": 81,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 45,
+     "heart_rate": 86,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 40,
+     "heart_rate": 83,
+     "temperature": 37.0
+    },
+    {
+     "minutes_ago": 35,
+     "heart_rate": 73,
+     "temperature": 36.6
+    },
+    {
+     "minutes_ago": 30,
+     "heart_rate": 73,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 25,
+     "heart_rate": 72,
+     "temperature": 36.6
+    },
+    {
+     "minutes_ago": 20,
+     "heart_rate": 87,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 15,
+     "heart_rate": 79,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 10,
+     "heart_rate": 87,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 5,
+     "heart_rate": 87,
+     "temperature": 36.6
+    },
+    {
+     "minutes_ago": 0,
+     "heart_rate": 83,
+     "temperature": 36.9
+    }
+   ],
+   "place": {
+    "lat": 24.46981,
+    "lon": 39.60909,
+    "accuracy_m": 8,
+    "minutes_ago": 6
+   }
+  },
+  {
+   "group_code": "U-PK-0318",
+   "pilgrim_index": 0,
+   "pattern": "fever",
+   "health": true,
+   "water_minutes_ago": 70,
+   "readings": [
+    {
+     "minutes_ago": 60,
+     "heart_rate": 97,
+     "temperature": 38.4
+    },
+    {
+     "minutes_ago": 55,
+     "heart_rate": 98,
+     "temperature": 38.4
+    },
+    {
+     "minutes_ago": 50,
+     "heart_rate": 100,
+     "temperature": 38.5
+    },
+    {
+     "minutes_ago": 45,
+     "heart_rate": 97,
+     "temperature": 38.5
+    },
+    {
+     "minutes_ago": 40,
+     "heart_rate": 98,
+     "temperature": 38.3
+    },
+    {
+     "minutes_ago": 35,
+     "heart_rate": 103,
+     "temperature": 38.5
+    },
+    {
+     "minutes_ago": 30,
+     "heart_rate": 100,
+     "temperature": 38.6
+    },
+    {
+     "minutes_ago": 25,
+     "heart_rate": 102,
+     "temperature": 38.5
+    },
+    {
+     "minutes_ago": 20,
+     "heart_rate": 101,
+     "temperature": 38.6
+    },
+    {
+     "minutes_ago": 15,
+     "heart_rate": 96,
+     "temperature": 38.6
+    },
+    {
+     "minutes_ago": 10,
+     "heart_rate": 99,
+     "temperature": 38.6
+    },
+    {
+     "minutes_ago": 5,
+     "heart_rate": 102,
+     "temperature": 38.5
+    },
+    {
+     "minutes_ago": 0,
+     "heart_rate": 102,
+     "temperature": 38.6
+    }
+   ],
+   "place": {
+    "lat": 21.42576,
+    "lon": 39.82934,
+    "accuracy_m": 12,
+    "minutes_ago": 5
+   }
+  },
+  {
+   "group_code": "U-PK-0318",
+   "pilgrim_index": 1,
+   "pattern": "normal",
+   "health": true,
+   "water_minutes_ago": 60,
+   "readings": [
+    {
+     "minutes_ago": 60,
+     "heart_rate": 83,
+     "temperature": 37.0
+    },
+    {
+     "minutes_ago": 55,
+     "heart_rate": 74,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 50,
+     "heart_rate": 84,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 45,
+     "heart_rate": 88,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 40,
+     "heart_rate": 74,
+     "temperature": 36.6
+    },
+    {
+     "minutes_ago": 35,
+     "heart_rate": 81,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 30,
+     "heart_rate": 79,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 25,
+     "heart_rate": 74,
+     "temperature": 37.0
+    },
+    {
+     "minutes_ago": 20,
+     "heart_rate": 84,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 15,
+     "heart_rate": 83,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 10,
+     "heart_rate": 79,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 5,
+     "heart_rate": 87,
+     "temperature": 36.6
+    },
+    {
+     "minutes_ago": 0,
+     "heart_rate": 81,
+     "temperature": 36.6
+    }
+   ],
+   "place": {
+    "lat": 21.42223,
+    "lon": 39.82302,
+    "accuracy_m": 35,
+    "minutes_ago": 3
+   }
+  },
+  {
+   "group_code": "U-PK-0318",
+   "pilgrim_index": 2,
+   "pattern": "no_signal",
+   "health": true,
+   "water_minutes_ago": 200,
+   "readings": [
+    {
+     "minutes_ago": 105,
+     "heart_rate": 82,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 100,
+     "heart_rate": 78,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 95,
+     "heart_rate": 83,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 90,
+     "heart_rate": 80,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 85,
+     "heart_rate": 79,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 80,
+     "heart_rate": 82,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 75,
+     "heart_rate": 83,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 70,
+     "heart_rate": 81,
+     "temperature": 36.9
+    },
+    {
+     "minutes_ago": 65,
+     "heart_rate": 84,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 60,
+     "heart_rate": 84,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 55,
+     "heart_rate": 82,
+     "temperature": 36.8
+    },
+    {
+     "minutes_ago": 50,
+     "heart_rate": 78,
+     "temperature": 36.7
+    },
+    {
+     "minutes_ago": 45,
+     "heart_rate": 80,
+     "temperature": 36.7
+    }
+   ],
+   "place": {
+    "lat": 21.42112,
+    "lon": 39.8261,
+    "accuracy_m": 8,
+    "minutes_ago": 1
+   }
+  },
+  {
+   "group_code": "U-PK-0318",
+   "pilgrim_index": 4,
+   "pattern": null,
+   "health": false,
+   "water_minutes_ago": null,
+   "readings": [],
+   "place": {
+    "lat": 21.42161,
+    "lon": 39.82449,
+    "accuracy_m": 8,
+    "minutes_ago": 5
+   }
   }
  ]
 }

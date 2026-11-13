@@ -16,7 +16,13 @@ const NAV = [
 export function Shell() {
   const { source, me, fallbackReason, signedOut } = useSession();
   const canManage = useCan("staff:manage");
-  const nav = canManage ? [...NAV, { to: "/staff", label: "Staff", end: false }] : NAV;
+  const canHealth = useCan("health:read");
+  const nav = [
+    ...NAV.slice(0, 5),
+    ...(canHealth ? [{ to: "/health", label: "Health", end: false }] : []),
+    ...NAV.slice(5),
+    ...(canManage ? [{ to: "/staff", label: "Staff", end: false }] : []),
+  ];
   const { lang, setLang } = useLang();
   const operator = lang === "ar" && me.tenant.name_ar ? me.tenant.name_ar : me.tenant.name;
 

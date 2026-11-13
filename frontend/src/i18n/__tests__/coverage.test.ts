@@ -5,6 +5,8 @@ import { AIRPORT_NAMES_EN } from "../../domain/airports";
 import { INCIDENT_LABELS_EN } from "../../domain/incidents";
 import { ROLE_LABELS_EN } from "../../features/account/StaffPage";
 import { ANALYST_LABELS_EN } from "../../features/analyst/AnalystPage";
+import { SHOW_EN as HEALTH_SHOW_EN } from "../../features/health/HealthPage";
+import { HEALTH_LABELS_EN } from "../../domain/healthLabels";
 import { AR } from "../ar";
 
 function sources(dir: string): string[] {
@@ -30,6 +32,7 @@ describe("Arabic", () => {
     for (const en of [...INCIDENT_LABELS_EN, "Incidents", "Not resolved", "All"]) if (!(en in AR)) missing.add(en);
     for (const en of [...ANALYST_LABELS_EN, "Analyst"]) if (!(en in AR)) missing.add(en);
     for (const en of [...ROLE_LABELS_EN, "Staff"]) if (!(en in AR)) missing.add(en);
+    for (const en of [...HEALTH_LABELS_EN, ...Object.values(HEALTH_SHOW_EN), "Health"]) if (!(en in AR)) missing.add(en);
     expect([...missing]).toEqual([]);
   });
 });
