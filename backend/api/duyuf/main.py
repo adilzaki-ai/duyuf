@@ -19,9 +19,9 @@ from fastapi.responses import JSONResponse
 
 from .core.auth import Identity, identity
 from .core.db import PoolUnavailable, healthy
-from .routers import arrivals, groups, imports, incidents, overview, pilgrims, resources
+from .routers import analyst, arrivals, groups, imports, incidents, overview, pilgrims, resources
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 
 app = FastAPI(title="Duyuf Platform API", version=VERSION,
               description="Hajj and Umrah operations: groups, pilgrims, journeys, arrivals.")
@@ -70,6 +70,7 @@ app.include_router(pilgrims.router)
 app.include_router(arrivals.router)
 app.include_router(resources.router)
 app.include_router(incidents.router)
+app.include_router(analyst.router)
 
 
 @app.get("/health", tags=["platform"])

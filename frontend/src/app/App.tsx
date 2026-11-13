@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { startDataSource, type StartedSource } from "../api/createDataSource";
+import { AnalystPage } from "../features/analyst/AnalystPage";
 import { ArrivalsPage } from "../features/arrivals/ArrivalsPage";
 import { FlightPage } from "../features/arrivals/FlightPage";
 import { ResourcesPage } from "../features/arrivals/ResourcesPage";
@@ -47,6 +48,7 @@ export function App({ start = startDataSource }: { start?: Start }) {
                   <Route path="groups/:id" element={<GroupPage />} />
                   <Route path="pilgrims" element={<PilgrimsPage />} />
                   <Route path="incidents" element={<IncidentsPage />} />
+                  <Route path="analyst" element={<AnalystPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Route>
               </Routes>

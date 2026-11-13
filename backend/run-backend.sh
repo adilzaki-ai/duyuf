@@ -23,6 +23,11 @@ if ! "$PGBIN/pg_isready" -h /tmp -p 5432 >/dev/null 2>&1; then
   "$PGBIN/pg_ctl" -D "$PGDATA" -l "$PGDATA/server.log" -o "-p 5432 -k /tmp" -w start
 fi
 
+# Local settings that never go in git, such as the analyst's ANTHROPIC_API_KEY.
+if [ -f .env.local ]; then
+  set -a; . ./.env.local; set +a
+fi
+
 .venv/bin/python scripts/migrate_db.py
 
 # `python -m uvicorn`: a venv's console scripts break when a folder above is renamed.

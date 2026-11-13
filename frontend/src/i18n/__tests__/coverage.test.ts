@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { AIRPORT_NAMES_EN } from "../../domain/airports";
 import { INCIDENT_LABELS_EN } from "../../domain/incidents";
+import { ANALYST_LABELS_EN } from "../../features/analyst/AnalystPage";
 import { AR } from "../ar";
 
 function sources(dir: string): string[] {
@@ -26,6 +27,7 @@ describe("Arabic", () => {
     for (const en of ["Arrivals", "48 hours", "7 days", ...AIRPORT_NAMES_EN]) if (!(en in AR)) missing.add(en);
     /* incidents: kinds, priorities, states, the nav entry and the filter tabs */
     for (const en of [...INCIDENT_LABELS_EN, "Incidents", "Not resolved", "All"]) if (!(en in AR)) missing.add(en);
+    for (const en of [...ANALYST_LABELS_EN, "Analyst"]) if (!(en in AR)) missing.add(en);
     expect([...missing]).toEqual([]);
   });
 });

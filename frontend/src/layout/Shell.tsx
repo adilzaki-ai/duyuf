@@ -9,6 +9,7 @@ const NAV = [
   { to: "/groups", label: "Groups", end: false },
   { to: "/pilgrims", label: "Pilgrims", end: false },
   { to: "/incidents", label: "Incidents", end: false },
+  { to: "/analyst", label: "Analyst", end: false },
 ];
 
 export function Shell() {

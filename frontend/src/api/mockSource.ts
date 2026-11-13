@@ -5,6 +5,8 @@ import { allowedActions, incidentRefusal, type IncidentAction, type IncidentKind
 import { blockOf, load } from "../domain/plan";
 import { MOVES, refusal, STATUSES, type Status } from "../domain/journey";
 import type {
+  AnalystAnswer,
+  AnalystStatus,
   Arrivals,
   Assignment,
   Flight,
@@ -87,6 +89,7 @@ const ALL_SCOPES: Scope[] = [
   "flight:write",
   "incident:read",
   "incident:write",
+  "analyst:ask",
 ];
 
 /** A day offset and an hour as an instant, read on the Saudi clock (UTC+3, no daylight saving). */
@@ -827,5 +830,19 @@ export class MockSource implements DataSource {
   async noteIncident(id: string, note: string): Promise<IncidentDetail> {
     if (!note.trim()) throw new DataSourceError("a note needs words", { status: 422 });
     return this.act(id, null, {}, { kind: "note", team: null, note: note.trim() });
+  }
+
+  /* ---- the analyst: it needs the platform; the sample sends nothing anywhere ---- */
+
+  async analystStatus(): Promise<AnalystStatus> {
+    return { ready: false, model: "claude-opus-5-5", reason: "sample mode: questions are never sent out" };
+  }
+
+  async ask(_question: string, _history: { question: string; answer: string }[]): Promise<AnalystAnswer> {
+    throw new DataSourceError("The analyst needs the platform. Sample mode does not send questions out.", { status: 503 });
+  }
+
+  async analystRecent(): Promise<AnalystAnswer[]> {
+    return [];
   }
 }

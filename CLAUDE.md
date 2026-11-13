@@ -23,6 +23,10 @@ database and ports. Never touch Sky Logics from here.
   loaded into the `duyuf-demo` operator by `seed_demo.py` and served by MockSource.
   Never write sample data into a non-demo operator; `is_demo` is fixed at creation.
 
+- AI analyst (`analyst/`): aggregates only, agreed with Adil. Its tools never
+  return names, passports, birth dates, phones or incident descriptions;
+  `test_no_tool_lets_a_person_out` enforces it. Key in `backend/.env.local`.
+
 ## Text
 - English is the key: `t("Pilgrims")`, Arabic in `src/i18n/ar.ts`. A test fails
   when a `t("…")` string has no Arabic. Use logical CSS (`inline-start`), not left/right.

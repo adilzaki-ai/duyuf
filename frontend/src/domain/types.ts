@@ -13,7 +13,8 @@ export type Scope =
   | "flight:read"
   | "flight:write"
   | "incident:read"
-  | "incident:write";
+  | "incident:write"
+  | "analyst:ask";
 
 export interface Me {
   tenant: { id: string; slug: string; name: string; name_ar: string | null; is_demo: boolean };
@@ -388,4 +389,41 @@ export interface NewIncident {
   group_id: string | null;
   location: string | null;
   description: string;
+}
+
+export interface AnalystStatus {
+  ready: boolean;
+  model: string;
+  /** why not, when not ready */
+  reason?: string;
+}
+
+/** One look the analyst took at the data: which totals, asked how, and what came back. */
+export interface AnalystSource {
+  tool: string;
+  input: Record<string, unknown>;
+  result: unknown;
+}
+
+export interface AnalystChart {
+  title: string;
+  labels: string[];
+  values: number[];
+  unit: string | null;
+}
+
+export interface AnalystAnswer {
+  id: string;
+  asked_by: string;
+  question: string;
+  /** answered · declined (the model would not) · cut_short · failed (the call did not complete) */
+  outcome: "answered" | "declined" | "cut_short" | "failed";
+  answer: string | null;
+  sources: AnalystSource[];
+  charts: AnalystChart[];
+  model: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  seconds: number | null;
+  asked_at: string;
 }
