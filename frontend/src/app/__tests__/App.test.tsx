@@ -116,4 +116,32 @@ describe("Duyuf on the sample", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Add 1 pilgrims" }));
     expect(await screen.findByText("1 pilgrims added to the group.")).toBeInTheDocument();
   });
+
+  it("works an incident from the queue: give it to a team, then resolve it", async () => {
+    render(<App start={start} />);
+    await userEvent.click(await screen.findByRole("link", { name: "Incidents" }));
+    expect(await screen.findByText("Pressed SOS. Not answering the phone.")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Pressed SOS. Not answering the phone."));
+    const panel = await screen.findByRole("complementary");
+    await userEvent.type(within(panel).getByRole("combobox", { name: "Team" }), "Makkah field team");
+    await userEvent.click(within(panel).getByRole("button", { name: "Give to team" }));
+    expect(await within(panel).findByText("Given to Makkah field team")).toBeInTheDocument();
+    await userEvent.type(within(panel).getByRole("textbox", { name: "Note" }), "Found at gate 79, safe.");
+    await userEvent.click(within(panel).getByRole("button", { name: "Resolve" }));
+    expect(await within(panel).findByRole("button", { name: "Open again" })).toBeInTheDocument();
+  });
+
+  it("reports an incident for a pilgrim from the pilgrim's panel", async () => {
+    render(<App start={start} />);
+    await userEvent.click(await screen.findByRole("link", { name: "Pilgrims" }));
+    const rows = await screen.findAllByRole("row");
+    await userEvent.click(rows[1]);
+    const panel = await screen.findByRole("complementary");
+    await userEvent.click(await within(panel).findByRole("link", { name: "Report an incident" }));
+    expect(await screen.findByRole("heading", { name: "Report an incident" })).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("What happened"), "Lost their bag at the hotel.");
+    await userEvent.click(screen.getByRole("button", { name: "Raise incident" }));
+    const opened = await screen.findByRole("complementary");
+    expect(await within(opened).findByText("Lost their bag at the hotel.")).toBeInTheDocument();
+  });
 });

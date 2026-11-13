@@ -7,7 +7,11 @@ import type {
   Group,
   GroupChange,
   ImportResult,
+  IncidentDetail,
+  IncidentFilter,
+  IncidentList,
   Me,
+  NewIncident,
   NewFlight,
   NewGroup,
   NewPilgrim,
@@ -124,5 +128,33 @@ export class PlatformSource implements DataSource {
       rows,
       dry_run: dryRun,
     });
+  }
+
+  incidents(f: IncidentFilter) {
+    return this.http.get<IncidentList>("/v1/incidents", { ...f });
+  }
+
+  incident(id: string) {
+    return this.http.get<IncidentDetail>(`/v1/incidents/${encodeURIComponent(id)}`);
+  }
+
+  raiseIncident(i: NewIncident) {
+    return this.http.post<IncidentDetail>("/v1/incidents", i);
+  }
+
+  assignIncident(id: string, team: string, note?: string) {
+    return this.http.post<IncidentDetail>(`/v1/incidents/${encodeURIComponent(id)}/assign`, { team, note });
+  }
+
+  resolveIncident(id: string, resolution: string) {
+    return this.http.post<IncidentDetail>(`/v1/incidents/${encodeURIComponent(id)}/resolve`, { resolution });
+  }
+
+  reopenIncident(id: string, note: string) {
+    return this.http.post<IncidentDetail>(`/v1/incidents/${encodeURIComponent(id)}/reopen`, { note });
+  }
+
+  noteIncident(id: string, note: string) {
+    return this.http.post<IncidentDetail>(`/v1/incidents/${encodeURIComponent(id)}/notes`, { note });
   }
 }

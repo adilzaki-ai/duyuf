@@ -97,6 +97,16 @@ it covers whole. **What if…** tries delays and extra resources against the
 board without saving anything. Rule: `arrivals/plan.py` ↔ `domain/plan.ts`,
 tested on the same case on both sides.
 
+## Incidents
+
+Something has happened to a pilgrim or a group (SOS, lost, medical, heat,
+transport): anyone on staff raises it (*Incidents → Report incident*, or from a
+pilgrim's panel), gives it to a team, and resolves it; viewers follow along.
+The queue puts what is still waiting first, urgent before high, longest waiting
+first, and counts the median time to a team and to resolution over the last
+seven days. Every step is kept with who took it and when; nothing is deleted.
+Moves: `incidents/flow.py` ↔ `domain/incidents.ts`, pinned by a test.
+
 ## Tests
 
 ```bash

@@ -6,6 +6,7 @@ import { ArrivalsPage } from "../features/arrivals/ArrivalsPage";
 import { FlightPage } from "../features/arrivals/FlightPage";
 import { ResourcesPage } from "../features/arrivals/ResourcesPage";
 import { GroupPage } from "../features/groups/GroupPage";
+import { IncidentsPage } from "../features/incidents/IncidentsPage";
 import { GroupsPage } from "../features/groups/GroupsPage";
 import { OverviewPage } from "../features/overview/OverviewPage";
 import { PilgrimsPage } from "../features/pilgrims/PilgrimsPage";
@@ -45,6 +46,7 @@ export function App({ start = startDataSource }: { start?: Start }) {
                   <Route path="groups" element={<GroupsPage />} />
                   <Route path="groups/:id" element={<GroupPage />} />
                   <Route path="pilgrims" element={<PilgrimsPage />} />
+                  <Route path="incidents" element={<IncidentsPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Route>
               </Routes>

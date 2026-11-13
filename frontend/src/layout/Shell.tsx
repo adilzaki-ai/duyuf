@@ -8,6 +8,7 @@ const NAV = [
   { to: "/arrivals", label: "Arrivals", end: false },
   { to: "/groups", label: "Groups", end: false },
   { to: "/pilgrims", label: "Pilgrims", end: false },
+  { to: "/incidents", label: "Incidents", end: false },
 ];
 
 export function Shell() {

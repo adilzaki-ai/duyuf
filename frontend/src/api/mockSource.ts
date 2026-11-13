@@ -1,6 +1,7 @@
 import sample from "../../../sample/demo.json";
 import { brief, flightState, landingDay, normalFlightNumber, waves } from "../domain/brief";
 import { checkRow, IMPORT_COLUMNS } from "../domain/importRow";
+import { allowedActions, incidentRefusal, type IncidentAction, type IncidentKind, type Priority } from "../domain/incidents";
 import { blockOf, load } from "../domain/plan";
 import { MOVES, refusal, STATUSES, type Status } from "../domain/journey";
 import type {
@@ -14,12 +15,18 @@ import type {
   GroupChange,
   ImportProblem,
   ImportResult,
+  Incident,
+  IncidentDetail,
+  IncidentEvent,
+  IncidentFilter,
+  IncidentList,
   JourneyStep,
   Me,
   MovingGroup,
   Need,
   NewFlight,
   NewGroup,
+  NewIncident,
   NewPilgrim,
   NewShift,
   Overview,
@@ -78,6 +85,8 @@ const ALL_SCOPES: Scope[] = [
   "pilgrim:identity",
   "flight:read",
   "flight:write",
+  "incident:read",
+  "incident:write",
 ];
 
 /** A day offset and an hour as an instant, read on the Saudi clock (UTC+3, no daylight saving). */
@@ -96,6 +105,7 @@ export class MockSource implements DataSource {
   private readonly people = new Map<string, PilgrimDetail>();
   private readonly flights = new Map<string, FlightRecord>();
   private readonly shiftsById = new Map<string, Shift>();
+  private readonly incidentsById = new Map<string, Omit<IncidentDetail, "allowed">>();
 
   constructor(now?: Date) {
     this.clock = now ? () => now : () => new Date();
@@ -176,6 +186,48 @@ export class MockSource implements DataSource {
         arrival_flight_id: p.flight ? flightId.get(p.flight)! : null,
         flight_number: p.flight,
         allowed: [...MOVES[status]],
+        history,
+      });
+    });
+    const place = new Map<string, number>();
+    const byPlace = new Map<string, string>();
+    sample.pilgrims.forEach((p, i) => {
+      const n = place.get(p.group_code) ?? 0;
+      byPlace.set(`${p.group_code}|${n}`, `p-${i}`);
+      place.set(p.group_code, n + 1);
+    });
+    const t0 = this.clock().getTime();
+    const ago = (mins: number) => ksaIso(new Date(t0 - mins * 60_000));
+    sample.incidents.forEach((x, i) => {
+      const opened = ago(x.minutes_ago);
+      const after = (m: number | null) => (m == null ? null : ago(x.minutes_ago - m));
+      const pid = x.pilgrim_index == null ? null : byPlace.get(`${x.group_code}|${x.pilgrim_index}`)!;
+      const history: IncidentEvent[] = [{ kind: "opened", note: null, team: null, actor: x.reported_by, at: opened }];
+      if (x.team) history.push({ kind: "assigned", note: null, team: x.team, actor: "Operations desk", at: after(x.assigned_after)! });
+      if (x.resolved_after != null)
+        history.push({ kind: "resolved", note: x.resolution, team: null, actor: x.team!, at: after(x.resolved_after)! });
+      this.incidentsById.set(`i-${i}`, {
+        id: `i-${i}`,
+        ref: 1001 + i,
+        kind: x.kind as IncidentKind,
+        priority: x.priority as Priority,
+        status: x.resolved_after != null ? "resolved" : x.team ? "assigned" : "open",
+        pilgrim_id: pid,
+        pilgrim_name: null,
+        pilgrim_name_ar: null,
+        group_id: `g-${x.group_code}`,
+        group_code: null,
+        group_name: null,
+        leader_phone: null,
+        location: x.location,
+        description: x.description,
+        team: x.team,
+        resolution: x.resolution,
+        reported_by: x.reported_by,
+        opened_at: opened,
+        assigned_at: after(x.assigned_after),
+        resolved_at: after(x.resolved_after),
+        updated_at: history[history.length - 1].at,
         history,
       });
     });
@@ -615,5 +667,165 @@ export class MockSource implements DataSource {
     const saved = !dryRun && errors.length === 0 && rows.length > 0;
     if (saved) for (const [, v] of good) this.add({ ...v, group_id: groupId }, "Imported from a spreadsheet");
     return { rows: rows.length, valid: rows.length - bad.size, errors, saved };
+  }
+
+  /* ---- incidents ---- */
+
+  /** With the pilgrim's and group's current names, as the platform joins them. */
+  private shown(rec: Omit<IncidentDetail, "allowed">): IncidentDetail {
+    const p = rec.pilgrim_id ? this.people.get(rec.pilgrim_id) : undefined;
+    const g = rec.group_id ? this.groupsById.get(rec.group_id) : undefined;
+    return {
+      ...rec,
+      pilgrim_name: p?.full_name ?? null,
+      pilgrim_name_ar: p?.full_name_ar ?? null,
+      group_code: g?.code ?? null,
+      group_name: g?.name ?? null,
+      leader_phone: g?.leader_phone ?? null,
+      allowed: allowedActions(rec.status),
+      history: [...rec.history],
+    };
+  }
+
+  async incidents(f: IncidentFilter): Promise<IncidentList> {
+    const rank = { urgent: 0, high: 1, normal: 2 } as const;
+    const all = [...this.incidentsById.values()];
+    const items: Incident[] = all
+      .filter((i) => (f.status ?? "active") === "all" || ((f.status ?? "active") === "active") === (i.status !== "resolved"))
+      .filter((i) => !f.kind || i.kind === f.kind)
+      .filter((i) => !f.pilgrim_id || i.pilgrim_id === f.pilgrim_id)
+      .filter((i) => !f.group_id || i.group_id === f.group_id)
+      /* the platform's order: still to deal with, most pressing, longest waiting; resolved, latest first */
+      .sort((a, b) => {
+        const ra = a.status === "resolved" ? 1 : 0;
+        const rb = b.status === "resolved" ? 1 : 0;
+        if (ra !== rb) return ra - rb;
+        if (rank[a.priority] !== rank[b.priority]) return rank[a.priority] - rank[b.priority];
+        const ka = ra ? -Date.parse(a.resolved_at!) : Date.parse(a.opened_at);
+        const kb = rb ? -Date.parse(b.resolved_at!) : Date.parse(b.opened_at);
+        return ka - kb || a.ref - b.ref;
+      })
+      .map((i) => {
+        const { history: _h, ...rest } = this.shown(i);
+        return rest;
+      });
+    const now = this.clock().getTime();
+    const week = all.filter((i) => Date.parse(i.opened_at) > now - 7 * 24 * HOUR);
+    const median = (xs: number[]) => {
+      if (!xs.length) return null;
+      const s = [...xs].sort((a, b) => a - b);
+      const m = s.length / 2;
+      return Math.round(Number.isInteger(m) ? (s[m - 1] + s[m]) / 2 : s[Math.floor(m)]);
+    };
+    const mins = (a: string, b: string) => (Date.parse(b) - Date.parse(a)) / 60_000;
+    const today = ksaDate(this.clock());
+    const teams = new Map<string, number>();
+    for (const i of all) if (i.team) teams.set(i.team, Math.max(teams.get(i.team) ?? 0, Date.parse(i.updated_at)));
+    return {
+      items,
+      stats: {
+        open: all.filter((i) => i.status === "open").length,
+        assigned: all.filter((i) => i.status === "assigned").length,
+        urgent: all.filter((i) => i.status !== "resolved" && i.priority === "urgent").length,
+        resolved_today: all.filter((i) => i.status === "resolved" && ksaDate(new Date(i.resolved_at!)) === today).length,
+        minutes_to_assign: median(week.filter((i) => i.assigned_at).map((i) => mins(i.opened_at, i.assigned_at!))),
+        minutes_to_resolve: median(
+          week.filter((i) => i.status === "resolved").map((i) => mins(i.opened_at, i.resolved_at!)),
+        ),
+      },
+      teams: [...teams].sort((a, b) => b[1] - a[1]).map(([team]) => team),
+    };
+  }
+
+  async incident(id: string): Promise<IncidentDetail> {
+    const rec = this.incidentsById.get(id);
+    if (!rec) throw new DataSourceError("no such incident", { status: 404 });
+    return this.shown(rec);
+  }
+
+  async raiseIncident(n: NewIncident): Promise<IncidentDetail> {
+    if (!n.description.trim()) throw new DataSourceError("a description is needed", { status: 422 });
+    let group_id = n.group_id;
+    if (n.pilgrim_id) {
+      const p = this.people.get(n.pilgrim_id);
+      if (!p) throw new DataSourceError("refers to something that does not exist: no such pilgrim", { status: 422 });
+      group_id = p.group_id;
+    }
+    const now = this.now();
+    const id = `i-new-${this.incidentsById.size}-${Date.now()}`;
+    this.incidentsById.set(id, {
+      id,
+      ref: 1001 + this.incidentsById.size,
+      kind: n.kind,
+      priority: n.priority,
+      status: "open",
+      pilgrim_id: n.pilgrim_id,
+      pilgrim_name: null,
+      pilgrim_name_ar: null,
+      group_id,
+      group_code: null,
+      group_name: null,
+      leader_phone: null,
+      location: n.location,
+      description: n.description.trim(),
+      team: null,
+      resolution: null,
+      reported_by: ACTOR,
+      opened_at: now,
+      assigned_at: null,
+      resolved_at: null,
+      updated_at: now,
+      history: [{ kind: "opened", note: null, team: null, actor: ACTOR, at: now }],
+    });
+    return this.incident(id);
+  }
+
+  private act(id: string, action: IncidentAction | null, change: Partial<IncidentDetail>, event: Omit<IncidentEvent, "actor" | "at">) {
+    const rec = this.incidentsById.get(id);
+    if (!rec) throw new DataSourceError("no such incident", { status: 404 });
+    if (action) {
+      const why = incidentRefusal(rec.status, action);
+      if (why) throw new DataSourceError(why, { status: 409 });
+    }
+    const now = this.now();
+    this.incidentsById.set(id, {
+      ...rec,
+      ...change,
+      updated_at: now,
+      history: [...rec.history, { ...event, actor: ACTOR, at: now }],
+    });
+    return this.incident(id);
+  }
+
+  async assignIncident(id: string, team: string, note?: string): Promise<IncidentDetail> {
+    const rec = this.incidentsById.get(id);
+    const name = team.trim();
+    if (!name) throw new DataSourceError("a team is needed", { status: 422 });
+    return this.act(
+      id,
+      "assign",
+      { status: "assigned", team: name, assigned_at: rec?.assigned_at ?? this.now() },
+      { kind: "assigned", team: name, note: note?.trim() || null },
+    );
+  }
+
+  async resolveIncident(id: string, resolution: string): Promise<IncidentDetail> {
+    if (!resolution.trim()) throw new DataSourceError("say how it was resolved", { status: 422 });
+    return this.act(
+      id,
+      "resolve",
+      { status: "resolved", resolution: resolution.trim(), resolved_at: this.now() },
+      { kind: "resolved", team: null, note: resolution.trim() },
+    );
+  }
+
+  async reopenIncident(id: string, note: string): Promise<IncidentDetail> {
+    if (!note.trim()) throw new DataSourceError("a note needs words", { status: 422 });
+    return this.act(id, "reopen", { status: "open", resolution: null, resolved_at: null }, { kind: "reopened", team: null, note: note.trim() });
+  }
+
+  async noteIncident(id: string, note: string): Promise<IncidentDetail> {
+    if (!note.trim()) throw new DataSourceError("a note needs words", { status: 422 });
+    return this.act(id, null, {}, { kind: "note", team: null, note: note.trim() });
   }
 }

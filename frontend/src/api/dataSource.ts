@@ -7,7 +7,11 @@ import type {
   Group,
   GroupChange,
   ImportResult,
+  IncidentDetail,
+  IncidentFilter,
+  IncidentList,
   Me,
+  NewIncident,
   NewFlight,
   NewGroup,
   NewPilgrim,
@@ -56,6 +60,14 @@ export interface DataSource {
   updatePilgrim(id: string, change: PilgrimChange): Promise<PilgrimDetail>;
   /** Spreadsheet rows as read; the platform checks them. All or nothing; `dryRun` checks only. */
   importPilgrims(groupId: string, rows: Record<string, string>[], dryRun: boolean): Promise<ImportResult>;
+  /** Still to deal with first, the most pressing and longest waiting first; stats over all of them. */
+  incidents(f: IncidentFilter): Promise<IncidentList>;
+  incident(id: string): Promise<IncidentDetail>;
+  raiseIncident(i: NewIncident): Promise<IncidentDetail>;
+  assignIncident(id: string, team: string, note?: string): Promise<IncidentDetail>;
+  resolveIncident(id: string, resolution: string): Promise<IncidentDetail>;
+  reopenIncident(id: string, note: string): Promise<IncidentDetail>;
+  noteIncident(id: string, note: string): Promise<IncidentDetail>;
 }
 
 /** A refusal or failure, carrying the platform's own words so the screen can show them. */
