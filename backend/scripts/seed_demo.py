@@ -1,7 +1,7 @@
 """Load (or reload) the demonstration operator from sample/demo.json.
 
     .venv/bin/python scripts/seed_demo.py           create the operator if needed, then load
-    .venv/bin/python scripts/seed_demo.py --reset   wipe its groups, pilgrims, flights and shifts first
+    .venv/bin/python scripts/seed_demo.py --reset   wipe its groups, pilgrims, flights, shifts and incidents first
 
 Refuses any operator that is not a demonstration, in the same statement that
 deletes, so a real company's pilgrims can never be wiped by this. The wipe and
@@ -36,7 +36,8 @@ def seed(reset: bool = False) -> dict:
                                 (tid,)).fetchone()["n"]
         if existing and not reset:
             raise SystemExit(f"{op['slug']} already holds {existing} groups; pass --reset to reload")
-        for table in ("pilgrim_event", "pilgrim", "flight_event", "flight", "pilgrim_group", "resource_shift"):
+        for table in ("incident_event", "incident", "pilgrim_event", "pilgrim", "flight_event", "flight",
+                      "pilgrim_group", "resource_shift"):
             conn.execute(f"""DELETE FROM {table} x USING tenant t
                               WHERE x.tenant_id = t.id AND t.id = %s AND t.is_demo""", (tid,))
         fid = {}
@@ -66,6 +67,8 @@ def seed(reset: bool = False) -> dict:
                    RETURNING id""",
                 (tid, g["code"], g["name"], g["kind"], g["season"], g["origin_country"],
                  g["arrive_in_days"], g["depart_in_days"], g["leader_name"], g["leader_phone"])).fetchone()["id"]
+        by_place: dict[tuple[str, int], str] = {}
+        place: dict[str, int] = {}
         for p in data["pilgrims"]:
             last = p["history"][-1]
             pid = conn.execute(
@@ -80,16 +83,39 @@ def seed(reset: bool = False) -> dict:
                  p["nationality"], p["passport_no"], p["phone"], p["language"], fid.get(p["flight"]),
                  p["status"], p["needs"],
                  p["history"][0]["day"], p["history"][0]["hour"], last["day"], last["hour"])).fetchone()["id"]
+            by_place[(p["group_code"], place.setdefault(p["group_code"], 0))] = pid
+            place[p["group_code"]] += 1
             for h in p["history"]:
                 conn.execute(
                     """INSERT INTO pilgrim_event (tenant_id, pilgrim_id, from_status, to_status, actor, at)
                        VALUES (%s, %s, %s, %s, 'Demo load',
                                (current_date + %s)::timestamp + make_interval(hours => %s))""",
                     (tid, pid, h["from"], h["to"], h["day"], h["hour"]))
+        for x in data["incidents"]:
+            opened = f"now() - make_interval(mins => {int(x['minutes_ago'])})"
+            after = lambda m: f"{opened} + make_interval(mins => {int(m)})" if m is not None else "NULL"
+            status = "resolved" if x["resolved_after"] is not None else "assigned" if x["team"] else "open"
+            pid = by_place[(x["group_code"], x["pilgrim_index"])] if x["pilgrim_index"] is not None else None
+            iid = conn.execute(
+                f"""INSERT INTO incident (tenant_id, kind, priority, status, pilgrim_id, group_id, location, description,
+                        team, resolution, reported_by, opened_at, assigned_at, resolved_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, {opened}, {after(x['assigned_after'])},
+                            {after(x['resolved_after'])}, now())
+                    RETURNING id""",
+                (tid, x["kind"], x["priority"], status, pid, gid[x["group_code"]], x["location"],
+                 x["description"], x["team"], x["resolution"], x["reported_by"])).fetchone()["id"]
+            steps = [("opened", None, None, x["reported_by"], opened)]
+            if x["team"]:
+                steps.append(("assigned", x["team"], None, "Operations desk", after(x["assigned_after"])))
+            if x["resolved_after"] is not None:
+                steps.append(("resolved", None, x["resolution"], x["team"], after(x["resolved_after"])))
+            for kind, team, note, actor, at in steps:
+                conn.execute(f"""INSERT INTO incident_event (tenant_id, incident_id, kind, team, note, actor, at)
+                                 VALUES (%s, %s, %s, %s, %s, %s, {at})""", (tid, iid, kind, team, note, actor))
     counts = {"groups": len(data["groups"]), "pilgrims": len(data["pilgrims"]), "flights": len(data["flights"]),
-              "shifts": len(data["resources"])}
+              "shifts": len(data["resources"]), "incidents": len(data["incidents"])}
     print(f"loaded {op['slug']}: {counts['groups']} groups, {counts['pilgrims']} pilgrims, "
-          f"{counts['flights']} flights, {counts['shifts']} shifts")
+          f"{counts['flights']} flights, {counts['shifts']} shifts, {counts['incidents']} incidents")
     return counts
 
 

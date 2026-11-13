@@ -103,6 +103,26 @@ RESOURCES = [
     ("MED", "interpreter", "id", 1, -1, 8),
 ]
 
+# Incidents, timed in minutes before now: kind, priority, group, pilgrim (position
+# in the group, or None for the whole group), where, what, raised by, opened,
+# then minutes after opening when assigned (and to whom) and resolved (and how).
+# Only pilgrims in the Kingdom: position 3 in each group there went home early.
+INCIDENTS = [
+    ("sos", "urgent", "U-PK-0318", 5, "Al-Haram, gate 79", "Pressed SOS. Not answering the phone.",
+     "Group leader", 6, None, None, None, None),
+    ("lost", "high", "U-ID-0412", 12, "Prophet's Mosque, door 21",
+     "Separated from the group after Isha. Speaks Indonesian only.", "Group leader", 28, 4,
+     "Madinah field team", None, None),
+    ("heat", "high", "U-PK-0318", 20, "Ajyad street", "Dizzy and very hot after tawaf.",
+     "Hotel desk", 41, None, None, None, None),
+    ("medical", "normal", "U-GB-0044", 2, "Hotel, room 512", "Needs insulin kept cold.",
+     "Group leader", 190, 9, "Hotel desk", 75, "Fridge in the room arranged with the hotel."),
+    ("transport", "normal", "U-PK-0318", None, "Hotel entrance", "Bus for the Ziyarat tour did not come at 08:00.",
+     "Group leader", 1500, 12, "Transport desk", 55, "Replacement bus sent; left at 09:10."),
+    ("lost", "urgent", "U-ID-0412", 30, "Quba Mosque", "Elderly pilgrim did not come back to the bus.",
+     "Bus driver", 2900, 6, "Madinah field team", 48, "Found at the mosque clinic; back at the hotel."),
+]
+
 PATH = ["registered", "visa_issued", "arrived", "in_makkah", "in_madinah", "departed"]
 
 
@@ -177,8 +197,12 @@ def main() -> None:
                      "delay_minutes": late} for n, o, a, d, t, late, _ in FLIGHTS],
         "resources": [{"airport": a, "kind": k, "language": lang, "quantity": q, "from_day": f, "to_day": t}
                       for a, k, lang, q, f, t in RESOURCES],
+        "incidents": [{"kind": k, "priority": pr, "group_code": g, "pilgrim_index": i, "location": loc,
+                       "description": d, "reported_by": by, "minutes_ago": ago, "assigned_after": aa,
+                       "team": team, "resolved_after": ra, "resolution": res}
+                      for k, pr, g, i, loc, d, by, ago, aa, team, ra, res in INCIDENTS],
     }, ensure_ascii=False, indent=1) + "\n")
-    print(f"wrote {OUT} — {len(groups)} groups, {len(pilgrims)} pilgrims, {len(FLIGHTS)} flights, {len(RESOURCES)} shifts")
+    print(f"wrote {OUT} — {len(groups)} groups, {len(pilgrims)} pilgrims, {len(FLIGHTS)} flights, {len(RESOURCES)} shifts, {len(INCIDENTS)} incidents")
 
 
 if __name__ == "__main__":

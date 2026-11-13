@@ -1,3 +1,4 @@
+import type { IncidentAction, IncidentKind, IncidentStatus, Priority } from "./incidents";
 import type { Status } from "./journey";
 
 export type GroupKind = "hajj" | "umrah";
@@ -10,7 +11,9 @@ export type Scope =
   | "pilgrim:status"
   | "pilgrim:identity"
   | "flight:read"
-  | "flight:write";
+  | "flight:write"
+  | "incident:read"
+  | "incident:write";
 
 export interface Me {
   tenant: { id: string; slug: string; name: string; name_ar: string | null; is_demo: boolean };
@@ -314,4 +317,75 @@ export interface ImportResult {
   valid: number;
   errors: ImportProblem[];
   saved: boolean;
+}
+
+export interface Incident {
+  id: string;
+  /** "#1042" on screen and on the radio */
+  ref: number;
+  kind: IncidentKind;
+  priority: Priority;
+  status: IncidentStatus;
+  pilgrim_id: string | null;
+  pilgrim_name: string | null;
+  pilgrim_name_ar: string | null;
+  group_id: string | null;
+  group_code: string | null;
+  group_name: string | null;
+  leader_phone: string | null;
+  location: string | null;
+  description: string;
+  team: string | null;
+  resolution: string | null;
+  reported_by: string;
+  opened_at: string;
+  assigned_at: string | null;
+  resolved_at: string | null;
+  updated_at: string;
+  allowed: IncidentAction[];
+}
+
+export interface IncidentEvent {
+  kind: "opened" | "assigned" | "note" | "resolved" | "reopened";
+  note: string | null;
+  team: string | null;
+  actor: string;
+  at: string;
+}
+
+export interface IncidentDetail extends Incident {
+  history: IncidentEvent[];
+}
+
+export interface IncidentStats {
+  open: number;
+  assigned: number;
+  urgent: number;
+  resolved_today: number;
+  /** medians over incidents opened in the last 7 days; null when there are none */
+  minutes_to_assign: number | null;
+  minutes_to_resolve: number | null;
+}
+
+export interface IncidentList {
+  items: Incident[];
+  stats: IncidentStats;
+  /** teams used lately, most recent first, to offer when assigning */
+  teams: string[];
+}
+
+export interface IncidentFilter {
+  status?: "active" | "resolved" | "all";
+  kind?: IncidentKind;
+  pilgrim_id?: string;
+  group_id?: string;
+}
+
+export interface NewIncident {
+  kind: IncidentKind;
+  priority: Priority;
+  pilgrim_id: string | null;
+  group_id: string | null;
+  location: string | null;
+  description: string;
 }

@@ -16151,5 +16151,91 @@
    "from_day": -1,
    "to_day": 8
   }
+ ],
+ "incidents": [
+  {
+   "kind": "sos",
+   "priority": "urgent",
+   "group_code": "U-PK-0318",
+   "pilgrim_index": 5,
+   "location": "Al-Haram, gate 79",
+   "description": "Pressed SOS. Not answering the phone.",
+   "reported_by": "Group leader",
+   "minutes_ago": 6,
+   "assigned_after": null,
+   "team": null,
+   "resolved_after": null,
+   "resolution": null
+  },
+  {
+   "kind": "lost",
+   "priority": "high",
+   "group_code": "U-ID-0412",
+   "pilgrim_index": 12,
+   "location": "Prophet's Mosque, door 21",
+   "description": "Separated from the group after Isha. Speaks Indonesian only.",
+   "reported_by": "Group leader",
+   "minutes_ago": 28,
+   "assigned_after": 4,
+   "team": "Madinah field team",
+   "resolved_after": null,
+   "resolution": null
+  },
+  {
+   "kind": "heat",
+   "priority": "high",
+   "group_code": "U-PK-0318",
+   "pilgrim_index": 20,
+   "location": "Ajyad street",
+   "description": "Dizzy and very hot after tawaf.",
+   "reported_by": "Hotel desk",
+   "minutes_ago": 41,
+   "assigned_after": null,
+   "team": null,
+   "resolved_after": null,
+   "resolution": null
+  },
+  {
+   "kind": "medical",
+   "priority": "normal",
+   "group_code": "U-GB-0044",
+   "pilgrim_index": 2,
+   "location": "Hotel, room 512",
+   "description": "Needs insulin kept cold.",
+   "reported_by": "Group leader",
+   "minutes_ago": 190,
+   "assigned_after": 9,
+   "team": "Hotel desk",
+   "resolved_after": 75,
+   "resolution": "Fridge in the room arranged with the hotel."
+  },
+  {
+   "kind": "transport",
+   "priority": "normal",
+   "group_code": "U-PK-0318",
+   "pilgrim_index": null,
+   "location": "Hotel entrance",
+   "description": "Bus for the Ziyarat tour did not come at 08:00.",
+   "reported_by": "Group leader",
+   "minutes_ago": 1500,
+   "assigned_after": 12,
+   "team": "Transport desk",
+   "resolved_after": 55,
+   "resolution": "Replacement bus sent; left at 09:10."
+  },
+  {
+   "kind": "lost",
+   "priority": "urgent",
+   "group_code": "U-ID-0412",
+   "pilgrim_index": 30,
+   "location": "Quba Mosque",
+   "description": "Elderly pilgrim did not come back to the bus.",
+   "reported_by": "Bus driver",
+   "minutes_ago": 2900,
+   "assigned_after": 6,
+   "team": "Madinah field team",
+   "resolved_after": 48,
+   "resolution": "Found at the mosque clinic; back at the hotel."
+  }
  ]
 }

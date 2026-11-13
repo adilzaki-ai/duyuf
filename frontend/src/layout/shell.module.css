@@ -2,6 +2,8 @@
   min-height: 100vh;
   display: grid;
   grid-template-rows: auto auto 1fr;
+  /* never wider than the screen: a long nav scrolls in its own row */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .header {
@@ -51,9 +53,11 @@
   display: flex;
   gap: 4px;
   flex: 1;
+  min-width: 0;
 }
 
 .nav a {
+  white-space: nowrap;
   padding: 6px 12px;
   border-radius: 8px;
   color: var(--on-brand);

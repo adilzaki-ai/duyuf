@@ -166,4 +166,27 @@ describe("the sample", () => {
     expect([ayesha.date_of_birth, ayesha.needs]).toEqual(["1980-07-01", ["medical"]]);
     expect((await m.importPilgrims(g.id, rows.slice(0, 1), true)).errors[0].message).toBe("already registered with this operator");
   });
+
+  it("keeps a live incident queue: raise, assign, resolve, reopen, with every step", async () => {
+    const m = new MockSource(NOW);
+    const q = await m.incidents({});
+    expect(q.items.map((i) => i.kind)).toEqual(["sos", "heat", "lost"]);
+    expect(q.items[0]).toMatchObject({ status: "open", group_code: "U-PK-0318", allowed: ["assign", "resolve"] });
+    expect(q.stats).toMatchObject({ open: 2, assigned: 1, urgent: 1 });
+    expect(q.stats.minutes_to_assign).toBe(8);
+    expect(q.teams[0]).toBe("Madinah field team");
+
+    const { items } = await m.pilgrims({ status: "in_makkah", limit: 1 });
+    const raised = await m.raiseIncident({
+      kind: "medical", priority: "urgent", pilgrim_id: items[0].id, group_id: null, location: null, description: "Fell on the stairs.",
+    });
+    expect(raised.group_id).toBe(items[0].group_id);
+    await m.assignIncident(raised.id, "Makkah field team");
+    const done = await m.resolveIncident(raised.id, "Taken to the clinic.");
+    expect(done.allowed).toEqual(["reopen"]);
+    await expect(m.assignIncident(raised.id, "x")).rejects.toThrow(/cannot assign an incident that is resolved/);
+    const again = await m.reopenIncident(raised.id, "Pain again");
+    expect(again.history.map((h) => h.kind)).toEqual(["opened", "assigned", "resolved", "reopened"]);
+    expect((await m.incidents({ pilgrim_id: items[0].id, status: "all" })).items).toHaveLength(1);
+  });
 });

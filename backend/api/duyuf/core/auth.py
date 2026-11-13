@@ -25,13 +25,17 @@ KEY_PREFIX = "dyf_"
 # be widened here without touching a route.
 # Marking a flight landed moves its pilgrims, so it needs pilgrim:status, which
 # the desk staff at the airport hold; planning flights needs flight:write.
+# Incidents are raised and worked by anyone on staff; viewers only follow them.
 ROLE_SCOPES: dict[str, frozenset[str]] = {
     "administrator": frozenset({"group:read", "group:write", "pilgrim:read", "pilgrim:write",
-                                "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write"}),
+                                "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write",
+                                "incident:read", "incident:write"}),
     "supervisor": frozenset({"group:read", "group:write", "pilgrim:read", "pilgrim:write",
-                             "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write"}),
-    "staff": frozenset({"group:read", "pilgrim:read", "pilgrim:status", "flight:read"}),
-    "viewer": frozenset({"group:read", "pilgrim:read", "flight:read"}),
+                             "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write",
+                             "incident:read", "incident:write"}),
+    "staff": frozenset({"group:read", "pilgrim:read", "pilgrim:status", "flight:read",
+                        "incident:read", "incident:write"}),
+    "viewer": frozenset({"group:read", "pilgrim:read", "flight:read", "incident:read"}),
 }
 
 

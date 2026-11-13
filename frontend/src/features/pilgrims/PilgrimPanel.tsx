@@ -14,6 +14,7 @@ export function PilgrimPanel({ id, onClose }: { id: string; onClose: () => void 
   const move = useMovePilgrim();
   const canMove = useCan("pilgrim:status");
   const canEdit = useCan("pilgrim:write");
+  const canReport = useCan("incident:write");
   const [note, setNote] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -35,6 +36,15 @@ export function PilgrimPanel({ id, onClose }: { id: string; onClose: () => void 
             </button>
           )}
           {editing === id && <EditPilgrim key={id} p={q.data} onClose={() => setEditing(null)} />}
+          {canReport && editing !== id && (
+            <Link
+              to={`/incidents?pilgrim=${encodeURIComponent(id)}`}
+              className={`${u.button} ${u.quiet}`}
+              style={{ marginTop: 6, marginInlineStart: 6 }}
+            >
+              {t("Report an incident")}
+            </Link>
+          )}
           {q.data.full_name_ar && (
             <p className={u.muted} dir="rtl" style={{ margin: 0 }}>
               {q.data.full_name_ar}
