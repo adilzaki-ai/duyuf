@@ -22,10 +22,10 @@ from fastapi.responses import JSONResponse
 from .core.auth import Identity, identity
 from .core.db import PoolUnavailable, healthy
 from .core.jobs import run_forever
-from .routers import (analyst, arrivals, groups, health, imports, incidents, overview, pilgrims, rafeeq,
+from .routers import (ai, analyst, arrivals, groups, health, imports, incidents, overview, pilgrims, rafeeq,
                       resources, session, staff)
 
-VERSION = "0.9.0"
+VERSION = "0.10.0"
 
 @asynccontextmanager
 async def _lifespan(_: FastAPI):
@@ -89,6 +89,7 @@ app.include_router(session.router)
 app.include_router(staff.router)
 app.include_router(rafeeq.router)
 app.include_router(health.router)
+app.include_router(ai.router)
 
 
 @app.get("/health", tags=["platform"])

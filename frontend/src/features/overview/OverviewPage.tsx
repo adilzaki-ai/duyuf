@@ -1,3 +1,4 @@
+import { BriefCard } from "../ai/BriefCard";
 import { Link } from "react-router-dom";
 import { useOverview } from "../../api/queries";
 import { Failed, JourneyBar, Loading, PageHead, Tile, u } from "../../design/ui";
@@ -58,6 +59,7 @@ export function OverviewPage() {
           {fmtDate(o.today)} · {fmtHijri(o.today)}
         </span>
       </PageHead>
+      <BriefCard />
 
       <div className={u.tiles}>
         <Tile label={t("Pilgrims")} value={o.pilgrims} note={t("In {n} groups", { n: o.groups })} />

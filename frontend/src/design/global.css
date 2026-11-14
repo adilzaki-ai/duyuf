@@ -1,35 +1,47 @@
 /*
- * Deep green and Madinah sand, with gold for what needs attention.
- * Tokens only here; components read them.
+ * Turquoise (2026-11-14): a deep turquoise wherever white words sit on it or
+ * it is the words (links, numbers), a light aqua for glows and highlights,
+ * gold for what needs attention. Light by default for desk work; a dark
+ * "operations room" in the Sky Logics manner for wall screens and nights,
+ * chosen with the switch in the header (html[data-theme]) or, until someone
+ * chooses, from the computer's own setting. Tokens only here.
  */
 :root {
   color-scheme: light;
-  --bg: #f6f2ea;
+  --bg: #f2f7f7;
   --surface: #ffffff;
-  --surface-2: #fbf8f2;
-  --ink: #1c2a25;
-  --ink-2: #55625d;
-  --line: #e4ddcf;
-  --brand: #0f5c4a;
-  --brand-2: #17775f;
-  --on-brand: #f4efe3;
-  --gold: #c9a04a;
-  --gold-soft: #f3e6c4;
-  --danger: #b3412f;
+  --surface-2: #f6fbfb;
+  --ink: #10292c;
+  --ink-2: #4c6467;
+  --line: #d9e7e7;
+  --brand: #0a7f8a;
+  --brand-2: #0a7f8a;
+  --brand-deep: #075a63;
+  --on-brand: #ffffff;
+  --accent: #2ec4c6;
+  --accent-soft: #dcf5f4;
+  --gold: #c9963a;
+  --gold-soft: #fbefd6;
+  --danger: #c0392b;
+  --shadow: 0 1px 2px rgb(7 90 99 / 0.05), 0 6px 20px rgb(7 90 99 / 0.07);
+  --header-bg: linear-gradient(120deg, #075a63, #0a7f8a 55%, #13a3aa);
+  --glow: none;
 
   /* the journey, left to right */
-  --st-registered: #9aa59f;
-  --st-visa_issued: #c9a04a;
-  --st-arrived: #3b82a6;
-  --st-in_makkah: #0f5c4a;
-  --st-in_madinah: #2f9a6f;
-  --st-departed: #7b6f8f;
+  --st-registered: #9aaaac;
+  --st-visa_issued: #d1a03f;
+  --st-arrived: #3b82c4;
+  --st-in_makkah: #075a63;
+  --st-in_madinah: #22b3b6;
+  --st-departed: #8073a0;
 
   /* the arrival wave, by airport: Jeddah, Madinah, others (validated categorical slots) */
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --series-3: #1baf7a;
 
+  --font-display: "Space Grotesk", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   font-family: "Inter", "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 15px;
   line-height: 1.5;
@@ -37,22 +49,57 @@
   background: var(--bg);
 }
 
+/* the operations room: near-black, glowing turquoise, glass cards */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0f1614;
-    --surface: #16201d;
-    --surface-2: #1b2723;
-    --ink: #e8e4da;
-    --ink-2: #a3ada8;
-    --line: #2a3632;
-    --brand: #0c3f33;
-    --on-brand: #efe9da;
-    --gold-soft: #3d331c;
+    --bg: #04161a;
+    --surface: #0a2226;
+    --surface-2: #0d2b30;
+    --ink: #e6faf8;
+    --ink-2: #9cc4c1;
+    --line: #18393e;
+    --brand: #4fe0d9;
+    --brand-2: #4fe0d9;
+    --brand-deep: #0a7f8a;
+    --on-brand: #032024;
+    --accent: #4fe0d9;
+    --accent-soft: #0f3a3e;
+    --gold-soft: #3a2e15;
+    --shadow: 0 0 0 1px rgb(79 224 217 / 0.08), 0 8px 24px rgb(0 0 0 / 0.35);
+    --header-bg: linear-gradient(120deg, #031013, #062a2f);
+    --glow: 0 0 18px rgb(79 224 217 / 0.25);
+    --st-in_makkah: #0fb3b8;
+    --st-in_madinah: #6fe9e2;
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #04161a;
+  --surface: #0a2226;
+  --surface-2: #0d2b30;
+  --ink: #e6faf8;
+  --ink-2: #9cc4c1;
+  --line: #18393e;
+  --brand: #4fe0d9;
+  --brand-2: #4fe0d9;
+  --brand-deep: #0a7f8a;
+  --on-brand: #032024;
+  --accent: #4fe0d9;
+  --accent-soft: #0f3a3e;
+  --gold-soft: #3a2e15;
+  --shadow: 0 0 0 1px rgb(79 224 217 / 0.08), 0 8px 24px rgb(0 0 0 / 0.35);
+  --header-bg: linear-gradient(120deg, #031013, #062a2f);
+  --glow: 0 0 18px rgb(79 224 217 / 0.25);
+  --st-in_makkah: #0fb3b8;
+  --st-in_madinah: #6fe9e2;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
 }
 
 [dir="rtl"] {

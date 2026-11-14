@@ -16079,7 +16079,9 @@
    "arrival_airport": "JED",
    "day": 0,
    "time": "05:40",
-   "delay_minutes": 0
+   "delay_minutes": 0,
+   "terminal": "Hajj Terminal",
+   "gate": "H4"
   },
   {
    "number": "SV 705",
@@ -16087,7 +16089,9 @@
    "arrival_airport": "JED",
    "day": 0,
    "time": "21:15",
-   "delay_minutes": 0
+   "delay_minutes": 0,
+   "terminal": "Terminal 1",
+   "gate": "A21"
   },
   {
    "number": "MS 683",
@@ -16095,7 +16099,9 @@
    "arrival_airport": "JED",
    "day": 1,
    "time": "04:10",
-   "delay_minutes": 0
+   "delay_minutes": 0,
+   "terminal": "Hajj Terminal",
+   "gate": "H9"
   },
   {
    "number": "GA 980",
@@ -16103,7 +16109,9 @@
    "arrival_airport": "MED",
    "day": 1,
    "time": "09:25",
-   "delay_minutes": 95
+   "delay_minutes": 95,
+   "terminal": "Main Terminal",
+   "gate": "6"
   },
   {
    "number": "6E 63",
@@ -16111,7 +16119,9 @@
    "arrival_airport": "JED",
    "day": 2,
    "time": "02:50",
-   "delay_minutes": 0
+   "delay_minutes": 0,
+   "terminal": "Hajj Terminal",
+   "gate": "H2"
   },
   {
    "number": "SV 3304",
@@ -16119,7 +16129,9 @@
    "arrival_airport": "MED",
    "day": 2,
    "time": "13:05",
-   "delay_minutes": 0
+   "delay_minutes": 0,
+   "terminal": "Main Terminal",
+   "gate": "3"
   },
   {
    "number": "TK 92",
@@ -16127,7 +16139,9 @@
    "arrival_airport": "MED",
    "day": 3,
    "time": "07:00",
-   "delay_minutes": 20
+   "delay_minutes": 20,
+   "terminal": null,
+   "gate": null
   }
  ],
  "resources": [

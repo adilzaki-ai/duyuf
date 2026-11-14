@@ -6,6 +6,7 @@ import { ARRIVAL_AIRPORTS, airportName } from "../../domain/airports";
 import { t } from "../../i18n";
 import { ksaDate } from "../../lib/dates";
 import a from "./arrivals.module.css";
+import { TerminalList } from "./parts";
 
 /** A new flight, its time read on the Saudi clock. Opens the flight once it is saved. */
 export function AddFlight({ onClose }: { onClose: () => void }) {
@@ -16,11 +17,13 @@ export function AddFlight({ onClose }: { onClose: () => void }) {
   const [to, setTo] = useState<string>(ARRIVAL_AIRPORTS[0]);
   const [date, setDate] = useState(ksaDate());
   const [time, setTime] = useState("");
+  const [terminal, setTerminal] = useState("");
+  const [gate, setGate] = useState("");
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     create.mutate(
-      { number, origin_airport: from, arrival_airport: to, scheduled_at: `${date}T${time}:00+03:00` },
+      { number, origin_airport: from, arrival_airport: to, scheduled_at: `${date}T${time}:00+03:00`, terminal, gate },
       { onSuccess: (f) => go(`/arrivals/${f.id}`) },
     );
   };
@@ -53,6 +56,27 @@ export function AddFlight({ onClose }: { onClose: () => void }) {
               </option>
             ))}
           </select>
+        </label>
+        <label>
+          {t("Terminal")}
+          <input
+            value={terminal}
+            list="add-flight-terminals"
+            placeholder={t("If known")}
+            maxLength={40}
+            onChange={(e) => setTerminal(e.target.value)}
+          />
+          <TerminalList id="add-flight-terminals" airport={to} />
+        </label>
+        <label>
+          {t("Arrival gate")}
+          <input
+            value={gate}
+            placeholder="H12"
+            maxLength={8}
+            dir="ltr"
+            onChange={(e) => setGate(e.target.value.toUpperCase())}
+          />
         </label>
         <label>
           {t("Date")}

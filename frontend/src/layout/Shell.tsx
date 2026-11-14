@@ -1,5 +1,8 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useCan, useSession } from "../app/SessionContext";
+import { DuyufMark } from "../design/DuyufMark";
+import { AskBar } from "../features/ai/AskBar";
+import { useTheme } from "../design/theme";
 import { roleLabel } from "../features/account/StaffPage";
 import { t, useLang } from "../i18n";
 import s from "./shell.module.css";
@@ -24,15 +27,18 @@ export function Shell() {
     ...(canManage ? [{ to: "/staff", label: "Staff", end: false }] : []),
   ];
   const { lang, setLang } = useLang();
+  const [theme, toggleTheme] = useTheme();
   const operator = lang === "ar" && me.tenant.name_ar ? me.tenant.name_ar : me.tenant.name;
 
   return (
     <div className={s.shell}>
       <header className={s.header}>
         <div className={s.brand}>
-          <span className={s.mark} aria-hidden="true" />
-          <span className={s.word}>{lang === "ar" ? "ضيوف" : "Duyuf"}</span>
-          <span className={s.operator}>{operator}</span>
+          <DuyufMark size={36} />
+          <span className={s.brandWords}>
+            <span className={s.word}>{lang === "ar" ? "ضيوف" : "Duyuf"}</span>
+            <span className={s.operator}>{operator}</span>
+          </span>
         </div>
         <nav className={s.nav}>
           {nav.map((n) => (
@@ -41,6 +47,7 @@ export function Shell() {
             </NavLink>
           ))}
         </nav>
+        <AskBar />
         <div className={s.tools}>
           <details className={s.menu}>
             <summary aria-label={t("Account")}>
@@ -68,6 +75,24 @@ export function Shell() {
               )}
             </div>
           </details>
+          <button
+            type="button"
+            className={s.iconButton}
+            aria-label={theme === "dark" ? t("Light screen") : t("Dark screen")}
+            title={theme === "dark" ? t("Light screen") : t("Dark screen")}
+            onClick={toggleTheme}
+          >
+            {theme === "dark" ? (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="4.5" fill="currentColor" />
+                <path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="currentColor" />
+              </svg>
+            )}
+          </button>
           <button
             type="button"
             className={s.lang}

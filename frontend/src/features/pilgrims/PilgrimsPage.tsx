@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import { useGroups, usePilgrims } from "../../api/queries";
 import { useCan } from "../../app/SessionContext";
@@ -17,7 +18,9 @@ export function PilgrimBrowser({ groupId, flightId }: { groupId?: string; flight
   const [status, setStatus] = useState<Status | "">("");
   const [group, setGroup] = useState(groupId ?? "");
   const [limit, setLimit] = useState(PAGE);
-  const [open, setOpen] = useState<string | null>(null);
+  /* ?open=<id> (from the Ask anywhere bar) opens that pilgrim */
+  const [params] = useSearchParams();
+  const [open, setOpen] = useState<string | null>(params.get("open"));
   const groups = useGroups();
   const list = usePilgrims({
     q: q.trim() || undefined,

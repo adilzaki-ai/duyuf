@@ -1,12 +1,14 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { AIRPORT_NAMES_EN } from "../../domain/airports";
+import { AIRPORT_NAMES_EN, TERMINAL_NAMES_EN } from "../../domain/airports";
 import { INCIDENT_LABELS_EN } from "../../domain/incidents";
 import { ROLE_LABELS_EN } from "../../features/account/StaffPage";
 import { ANALYST_LABELS_EN } from "../../features/analyst/AnalystPage";
 import { SHOW_EN as HEALTH_SHOW_EN } from "../../features/health/HealthPage";
 import { HEALTH_LABELS_EN } from "../../domain/healthLabels";
+import { ADVISOR_LABELS_EN } from "../../features/ai/Advisor";
+import { BRIEF_LABELS_EN } from "../../features/ai/BriefCard";
 import { AR } from "../ar";
 
 function sources(dir: string): string[] {
@@ -27,12 +29,14 @@ describe("Arabic", () => {
     for (const en of ["Registered", "Visa issued", "In Makkah", "Wheelchair", "Minor alone", "Hajj", "Umrah", "Groups"])
       if (!(en in AR)) missing.add(en);
     /* and the arrivals board's tables: its nav entry, windows and airports */
-    for (const en of ["Arrivals", "48 hours", "7 days", ...AIRPORT_NAMES_EN]) if (!(en in AR)) missing.add(en);
+    for (const en of ["Arrivals", "48 hours", "7 days", ...AIRPORT_NAMES_EN, ...TERMINAL_NAMES_EN]) if (!(en in AR)) missing.add(en);
     /* incidents: kinds, priorities, states, the nav entry and the filter tabs */
     for (const en of [...INCIDENT_LABELS_EN, "Incidents", "Not resolved", "All"]) if (!(en in AR)) missing.add(en);
     for (const en of [...ANALYST_LABELS_EN, "Analyst"]) if (!(en in AR)) missing.add(en);
     for (const en of [...ROLE_LABELS_EN, "Staff"]) if (!(en in AR)) missing.add(en);
     for (const en of [...HEALTH_LABELS_EN, ...Object.values(HEALTH_SHOW_EN), "Health"]) if (!(en in AR)) missing.add(en);
+    /* the AI helpers: tones, resource kinds, and the screens the Ask bar can open */
+    for (const en of [...BRIEF_LABELS_EN, ...ADVISOR_LABELS_EN, "Resources", "Screen", "Flight"]) if (!(en in AR)) missing.add(en);
     expect([...missing]).toEqual([]);
   });
 });

@@ -116,6 +116,26 @@ def test_a_delay_and_a_missed_confirmation_show(client, op_a):
     assert {x["number"]: x["state"] for x in board["flights"]} == {"SV 705": "due", "PK 743": "delayed"}
 
 
+def test_the_terminal_and_gate_are_given_changed_and_kept_in_the_history(client, op_a):
+    at = (datetime.now(KSA) + timedelta(hours=8)).replace(microsecond=0, tzinfo=None)
+    f = client.post("/v1/flights", headers=as_op(op_a), json={
+        "number": "MS 683", "origin_airport": "CAI", "arrival_airport": "JED", "scheduled_at": at.isoformat(),
+        "terminal": "  Hajj   Terminal ", "gate": "h 12"}).json()
+    assert (f["terminal"], f["gate"]) == ("Hajj Terminal", "H12")
+    r = client.patch(f"/v1/flights/{f['id']}", headers=as_op(op_a), json={"gate": "h7"})
+    assert (r.json()["terminal"], r.json()["gate"]) == ("Hajj Terminal", "H7")
+    assert r.json()["history"][-1]["kind"] == "gate"
+    assert r.json()["history"][-1]["detail"] == {"terminal": "Hajj Terminal", "gate": "H7"}
+    on_board = client.get("/v1/arrivals", headers=as_op(op_a)).json()["flights"]
+    assert [(x["terminal"], x["gate"]) for x in on_board] == [("Hajj Terminal", "H7")]
+    # blank is "not given yet"; a gate is letters and digits
+    r = client.patch(f"/v1/flights/{f['id']}", headers=as_op(op_a), json={"terminal": "", "gate": None})
+    assert (r.json()["terminal"], r.json()["gate"]) == (None, None)
+    assert client.patch(f"/v1/flights/{f['id']}", headers=as_op(op_a), json={"gate": "gate #4"}).status_code == 422
+    # a flight added with neither has both empty
+    assert (_flight(client, op_a)["terminal"], _flight(client, op_a, "SV 705")["gate"]) == (None, None)
+
+
 def test_landing_moves_those_with_a_visa_and_holds_the_rest(client, op_a):
     g = _group(client, op_a)
     people = _pilgrims(client, op_a, g["id"], 3)

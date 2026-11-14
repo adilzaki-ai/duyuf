@@ -114,6 +114,37 @@
   display: block;
 }
 
+/* the arrival gate: big enough to read across the desk */
+.gate {
+  display: inline-block;
+  min-width: 2.6em;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 14px;
+  text-align: center;
+  color: var(--brand-deep);
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+:root[data-theme="dark"] .gate {
+  color: var(--brand);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .gate {
+    color: var(--brand);
+  }
+}
+
+.noGate {
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
 .lang {
   display: inline-block;
   margin-inline-end: 4px;

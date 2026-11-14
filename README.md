@@ -117,6 +117,22 @@ away. The map uses OpenStreetMap's public tiles, which is fine for a pilot;
 an app in a real season needs OSM's permission, or a small map of Makkah and
 Madinah served from our own server.
 
+## The AI helpers (staff)
+
+- **Briefing** on the Overview: what matters today, most urgent first, with
+  where to act. From totals only; reused for 10 minutes.
+- **Incident co-pilot**: is the priority right, which team, the next step, and
+  messages drafted in the pilgrim's language (with English to check). One press
+  gives the incident to the suggested team; nothing is sent by itself.
+- **Arrival plan advisor**: each gap explained, with a fix you can preview on
+  the board before adding any shift.
+- **Ask anywhere** (top of every screen, `/` or Ctrl+K): a name, group, flight or
+  screen takes you there; a question goes to the analyst.
+
+All four need `ANTHROPIC_API_KEY` in `backend/.env.local`; `DUYUF_AI_MODEL`
+chooses the model (Opus 5.5 by default, `claude-haiku-5-5` much cheaper).
+Every call is logged (who, model, tokens), never what was said.
+
 ## A real operator
 
 ```bash

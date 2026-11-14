@@ -52,6 +52,26 @@ describe("Duyuf on the sample", () => {
     expect(screen.queryByRole("button", { name: "Mark landed" })).not.toBeInTheDocument();
   });
 
+  it("shows each flight's terminal and gate, and changes the gate from the flight's page", async () => {
+    render(<App start={start} />);
+    await userEvent.click(await screen.findByRole("link", { name: "Arrivals" }));
+    expect(await screen.findByRole("columnheader", { name: "Gate" })).toBeInTheDocument();
+    const row = screen.getAllByRole("link", { name: "MS 683" }).map((l) => l.closest("tr")).find(Boolean)!;
+    expect(row).toHaveTextContent("Hajj Terminal");
+    expect(row).toHaveTextContent("H9");
+    await userEvent.click(screen.getAllByRole("link", { name: "MS 683" })[0]);
+    await screen.findByRole("heading", { name: "MS 683" });
+    const gate = screen.getByRole("textbox", { name: "Arrival gate" });
+    await userEvent.clear(gate);
+    await userEvent.type(gate, "h 14");
+    await userEvent.click(within(gate.closest("div")!).getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Arrives at Hajj Terminal, gate H14")).toBeInTheDocument();
+    await userEvent.clear(gate);
+    await userEvent.type(gate, "gate #4");
+    await userEvent.click(within(gate.closest("div")!).getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("a gate is letters and digits, like H12")).toBeInTheDocument();
+  });
+
   it("shows a gap, then a what-if that closes it", async () => {
     render(<App start={start} />);
     await userEvent.click(await screen.findByRole("link", { name: "Arrivals" }));
