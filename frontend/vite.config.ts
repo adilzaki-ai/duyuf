@@ -19,7 +19,8 @@ export default defineConfig({
     port: 5180,
     strictPort: true,
     proxy: { "/v1": { target: "http://127.0.0.1:8100", changeOrigin: false } },
-    fs: { allow: [".", "../sample"] },
+    /* ../backend/api: the demo reads Ask Rafeeq's rules from the server's own file (rafeeq/askRules.ts) */
+    fs: { allow: [".", "../sample", "../backend/api"] },
   },
   build: { sourcemap: true },
 });

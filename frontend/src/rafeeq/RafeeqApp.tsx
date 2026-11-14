@@ -2,11 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { DataSourceError } from "../api/dataSource";
 import { resolvedDataSource } from "../config/env";
 import { AMBULANCE, EMERGENCY, isRafeeqLang, isRtl, NATIVE_NAMES, RAFEEQ_LANGUAGES, type HelpKind, type RafeeqLang } from "./help";
+import { AskRafeeq } from "./AskRafeeq";
+import { Cover } from "./Cover";
 import { FindMyWay } from "./FindMyWay";
+import { AskIcon, CompassIcon, SirenIcon, SunIcon } from "./icons";
+import { RafeeqLogo } from "./Logo";
 import { ConsentCard, Countdown, DemoTry, HealthPanel, HeatWarning, PlaceLine, useSharePlace } from "./HealthParts";
-import { cardToken, createRafeeqSource, type NewReading, type RafeeqCall, type RafeeqPage, type RafeeqSource } from "./source";
+import { cardToken, createRafeeqSource, type AskAction, type NewReading, type RafeeqCall, type RafeeqPage, type RafeeqSource } from "./source";
 import { WALK } from "./places";
 import { iso, say } from "./words";
+import "@fontsource/reem-kufi/500.css";
+import "@fontsource/reem-kufi/600.css";
 import r from "./rafeeq.module.css";
 
 /**
@@ -31,7 +37,7 @@ const ALERT_POLL_MS = 2_000;
 
 type Start = () => Promise<RafeeqSource | null>;
 type Problem = "no-card" | "stopped" | "offline" | null;
-type View = { name: "home" } | { name: "heat" } | { name: "way" } | { name: "confirm"; kind: HelpKind } | { name: "failed"; kind: HelpKind };
+type View = { name: "home" } | { name: "heat" } | { name: "way" } | { name: "ask" } | { name: "confirm"; kind: HelpKind } | { name: "failed"; kind: HelpKind };
 
 const defaultStart: Start = async () => {
   /* the sample needs no card: a demonstration opens straight on its invented pilgrim */
@@ -119,8 +125,36 @@ const HEAT_WARNING = "Headache, dizziness, sickness or very hot skin? Stop, find
 /** The English the page passes to say() through its tables, for the words test. */
 export const RAFEEQ_TABLE_LINES = [...Object.values(KIND_NAME), ...HEAT_ADVICE, HEAT_WARNING, ...WALK];
 
-export function RafeeqApp({ start = defaultStart }: { start?: Start }) {
+const WELCOMED_KEY = "rafeeq.welcomed";
+
+/** The cover shows on a card's first opening (and every time in the client demo); never in tests. */
+function coverFirst(): boolean {
+  if (import.meta.env.MODE === "test") return false;
+  if (import.meta.env.VITE_ROUTER === "hash") return true;
+  return store<boolean>(WELCOMED_KEY) !== true;
+}
+
+/** "Saturday 14 November · 23 Jumada I 1448 · 12:40": the day, the Umm al-Qura date, and Saudi time. */
+function today(lang: RafeeqLang, now = new Date()): string {
+  const tz = "Asia/Riyadh";
+  try {
+    const day = new Intl.DateTimeFormat(`${lang}-u-nu-latn`, { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(now);
+    const hijri = new Intl.DateTimeFormat(`${lang}-u-ca-islamic-umalqura-nu-latn`, {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: tz,
+    }).format(now);
+    const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: tz }).format(now);
+    return `${day} · ${hijri} · \u2066${time}\u2069`;
+  } catch {
+    return "";
+  }
+}
+
+export function RafeeqApp({ start = defaultStart, cover }: { start?: Start; cover?: boolean }) {
   const [lang, setLangState] = useState<RafeeqLang>(() => firstLang() ?? "en");
+  const [showCover, setShowCover] = useState(() => cover ?? coverFirst());
   const chose = useRef(firstLang() !== null);
   const [source, setSource] = useState<RafeeqSource | null>(null);
   const [page, setPage] = useState<RafeeqPage | null>(null);
@@ -219,6 +253,13 @@ export function RafeeqApp({ start = defaultStart }: { start?: Start }) {
   const drank = () => void act((s) => s.water());
   const imOk = (id: string) => void act((s) => s.iAmOk(id));
   const demoReadings = (r: NewReading[]) => void act((s) => s.readings(r, "simulated"));
+  /* the step Ask Rafeeq suggested, pressed by the pilgrim */
+  const doSuggested = (a: AskAction) => {
+    if (a === "sos") ask("sos");
+    else if (a === "find_my_way") setView({ name: "way" });
+    else if (a === "drank_water") drank();
+    else if (a === "heat_safety") setView({ name: "heat" });
+  };
   const demoPlace = () =>
     void act(async (s) => {
       await s.location(24.4672 + (Math.random() - 0.5) * 0.004, 39.6112 + (Math.random() - 0.5) * 0.004, 20, "simulated");
@@ -321,6 +362,17 @@ export function RafeeqApp({ start = defaultStart }: { start?: Start }) {
         </button>
       </section>
     );
+  } else if (view.name === "ask" && source) {
+    spoken = s("Ask Rafeeq");
+    body = (
+      <>
+        <AskRafeeq source={source} page={page} lang={lang} speak={speak} act={doSuggested} />
+        <button type="button" className={r.plain} onClick={() => setView({ name: "home" })}>
+          {s("Back")}
+        </button>
+        <Numbers lang={lang} page={page} />
+      </>
+    );
   } else if (view.name === "way") {
     spoken = `${s("Find my way")}. ${s("Where do you want to go?")}`;
     body = (
@@ -360,23 +412,51 @@ export function RafeeqApp({ start = defaultStart }: { start?: Start }) {
     spoken = [s("Assalamu alaikum, {name}", { name }), s("Press a button if you need help."), ...page.calls.map((c) => callLine(c, lang))].join(" ");
     body = (
       <>
-        <h1 className={r.hello}>{s("Assalamu alaikum, {name}", { name: iso(name) })}</h1>
-        <p className={r.quiet}>{s("Press a button if you need help.")}</p>
+        <section className={r.hero}>
+          <h1 className={r.hello}>{s("Assalamu alaikum, {name}", { name: iso(name) })}</h1>
+          <p className={r.today}>{today(lang)}</p>
+          <p className={r.heroLine}>{s("Press a button if you need help.")}</p>
+          <p className={r.heroOperator} dir="auto">
+            {(isRtl(lang) && page.operator_ar) || page.operator} · {page.group_name}
+          </p>
+        </section>
         {!page.consent?.health && <HeatWarning lang={lang} />}
         {page.calls.map((c) => (
           <CallCard key={c.id} call={c} lang={lang} onFine={() => void fine(c)} />
         ))}
-        <button type="button" className={`${r.big} ${r.sos}`} onClick={() => ask("sos")}>
-          <b>{s("SOS")}</b>
-          <span>{s("Emergency: I need help now")}</span>
+        <button type="button" className={`${r.big} ${r.sos} ${r.sosHome}`} onClick={() => ask("sos")}>
+          <span className={r.sosRing} aria-hidden="true">
+            <SirenIcon />
+          </span>
+          <span className={r.sosWords}>
+            <b>{s("SOS")}</b>
+            <span>{s("Emergency: I need help now")}</span>
+          </span>
         </button>
-        <button type="button" className={`${r.big} ${r.lost}`} onClick={() => setView({ name: "way" })}>
-          {s("I am lost")}
-          <span>{s("Find my way")}</span>
+        <button type="button" className={`${r.big} ${r.askHome}`} onClick={() => setView({ name: "ask" })}>
+          <span className={r.tileIcon}>
+            <AskIcon />
+          </span>
+          <span className={r.tileWords}>
+            <b>{s("Ask Rafeeq")}</b>
+            <span>{s("Speak or type, in your language")}</span>
+          </span>
         </button>
-        <button type="button" className={`${r.big} ${r.heat}`} onClick={() => setView({ name: "heat" })}>
-          {s("Heat safety")}
-        </button>
+        <div className={r.tiles}>
+          <button type="button" className={`${r.tile} ${r.lost}`} onClick={() => setView({ name: "way" })}>
+            <span className={r.tileIcon}>
+              <CompassIcon />
+            </span>
+            <b>{s("I am lost")}</b>
+            <span>{s("Find my way")}</span>
+          </button>
+          <button type="button" className={`${r.tile} ${r.heat}`} onClick={() => setView({ name: "heat" })}>
+            <span className={r.tileIcon}>
+              <SunIcon />
+            </span>
+            <b>{s("Heat safety")}</b>
+          </button>
+        </div>
         {page.consent && problem !== "offline" && <ConsentCard page={page} lang={lang} onAnswer={answer} />}
         {page.consent?.health && page.health && (
           <HealthPanel health={page.health} recent={page.recent ?? []} lang={lang} onWater={drank} busy={busy} />
@@ -390,15 +470,28 @@ export function RafeeqApp({ start = defaultStart }: { start?: Start }) {
     );
   }
 
+  if (showCover)
+    return (
+      <Cover
+        lang={lang}
+        name={page ? firstName(page, lang) : null}
+        connected={loading ? null : problem === null}
+        onLang={setLang}
+        onStart={() => {
+          store(WELCOMED_KEY, true);
+          setShowCover(false);
+          /* the press lets the phone speak: greet them */
+          if (speak && page) speak(s("Assalamu alaikum, {name}", { name }) + " " + s("Press a button if you need help."));
+        }}
+      />
+    );
+
   return (
     <div className={r.app} lang={lang} dir={isRtl(lang) ? "rtl" : "ltr"}>
       <header className={r.top}>
-        <span className={r.brand}>{s("Rafeeq")}</span>
-        {page && (
-          <span className={r.operator} dir="auto">
-            {(isRtl(lang) && page.operator_ar) || page.operator}
-          </span>
-        )}
+        <span className={r.brand}>
+          <RafeeqLogo size={34} light />
+        </span>
         <select className={r.lang} aria-label={s("Language")} value={lang} onChange={(e) => setLang(e.target.value as RafeeqLang)}>
           {RAFEEQ_LANGUAGES.map((l) => (
             <option key={l} value={l} lang={l}>

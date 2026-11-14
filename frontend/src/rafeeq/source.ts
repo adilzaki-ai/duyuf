@@ -57,6 +57,17 @@ export interface RafeeqAlert {
   seconds_left: number;
 }
 
+/** What a pilgrim's question can lead to: the one button Rafeeq suggests. */
+export const ASK_ACTIONS = ["none", "sos", "find_my_way", "call_leader", "drank_water", "heat_safety"] as const;
+export type AskAction = (typeof ASK_ACTIONS)[number];
+
+export interface AskAnswer {
+  /** declined: the model would not answer; failed: nothing usable came back */
+  outcome: "answered" | "declined" | "failed";
+  answer: string | null;
+  action: AskAction;
+}
+
 export interface NewReading {
   at?: string;
   heart_rate?: number;
@@ -77,6 +88,8 @@ export interface RafeeqSource {
   location(lat: number, lon: number, accuracy_m: number | null, source: "phone" | "simulated"): Promise<void>;
   /** "I am OK": stops the countdown. Refused (409) once help has been called. */
   iAmOk(alertId: string): Promise<RafeeqPage>;
+  /** A question by voice or text; an answer in their language and one suggested button. */
+  ask(question: string, language: RafeeqLang, history: { question: string; answer: string }[]): Promise<AskAnswer>;
 }
 
 /** The platform, with the card's secret in place of a key. */
@@ -118,6 +131,10 @@ export class PlatformRafeeq implements RafeeqSource {
 
   iAmOk(alertId: string) {
     return this.http.post<RafeeqPage>(`/v1/rafeeq/alert/${encodeURIComponent(alertId)}/ok`);
+  }
+
+  ask(question: string, language: RafeeqLang, history: { question: string; answer: string }[]) {
+    return this.http.post<AskAnswer>("/v1/rafeeq/ask", { question, language, history }, 40_000);
   }
 }
 

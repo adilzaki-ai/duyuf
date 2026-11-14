@@ -25,7 +25,7 @@ from .core.jobs import run_forever
 from .routers import (analyst, arrivals, groups, health, imports, incidents, overview, pilgrims, rafeeq,
                       resources, session, staff)
 
-VERSION = "0.8.0"
+VERSION = "0.9.0"
 
 @asynccontextmanager
 async def _lifespan(_: FastAPI):

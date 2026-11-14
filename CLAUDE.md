@@ -41,6 +41,16 @@ database and ports. Never touch Sky Logics from here.
   are the one other place that reads across operators as the owner. Readings
   are health:read only (medic, administrator); other staff get the place, never
   the numbers. Readings kept 7 days, places 48 hours (PROPOSED).
+- Ask Rafeeq (`rafeeq/ask.py`): one Claude call per question, structured
+  {answer, action}; the pilgrim's own page as words (first name, group,
+  meeting point, states not numbers; never passport, birth date, surname,
+  phones). Model `DUYUF_RAFEEQ_MODEL` (default Opus 5.5; Haiku 5.5 is the
+  cheap option, the operator's call). The demo asks Claude through the
+  viewer's `sample` capability with the SAME rules, read from ask.py by
+  `frontend/src/rafeeq/askRules.ts`, so change the rules in ask.py only.
+- Rafeeq's look: the mark is `rafeeq/Logo.tsx`; Reem Kufi is for the name
+  only. The cover (`Cover.tsx`) shows on a card's first opening only, never
+  in front of SOS on later visits.
 - AI analyst (`analyst/`): aggregates only, agreed with Adil. Its tools never
   return names, passports, birth dates, phones or incident descriptions;
   `test_no_tool_lets_a_person_out` enforces it. Key in `backend/.env.local`.

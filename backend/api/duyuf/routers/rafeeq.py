@@ -20,9 +20,11 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field, model_validator
 
+from ..arrivals.brief import KSA
 from ..core.auth import CardHolder, Identity, card_holder, hash_key, new_card_token, require
 from ..core.db import tenant_session
 from ..health import record
+from ..rafeeq import ask as ask_engine
 from ..rafeeq.help import (ACTOR, CALLS_PER_HOUR, FINE_NOTE, HELP, LANGUAGES, PRESSED_AGAIN,
                            description)
 
@@ -298,3 +300,76 @@ def i_am_ok(alert_id: str, card: CardHolder = Depends(card_holder)):
         if not record.cancel(conn, card.pilgrim_id, alert_id):
             raise HTTPException(409, "too late to stop it: help has already been called")
         return _page(conn, card)
+
+
+# ---- Ask Rafeeq ----
+
+class Turn(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+    answer: str = Field(min_length=1, max_length=1200)
+
+
+class AskIn(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+    language: Literal[LANGUAGES]  # type: ignore[valid-type]
+    # the last few questions on this phone, so a follow-up makes sense
+    history: list[Turn] = Field(default=[], max_length=3)
+
+
+def situation(page: dict) -> dict:
+    """What Claude may know about this pilgrim: their own page, in words. No passport, no birth date,
+    no readings as numbers, nobody else."""
+    h = page.get("health")
+    return {
+        "saudi_time": datetime.now(KSA).strftime("%A %H:%M"),
+        "first_name": page["full_name"].split()[0],
+        "group": page["group_name"],
+        "group_leader": page["leader_name"],
+        "leader_phone_on_page": bool(page["leader_phone"]),
+        "meeting_point": (page.get("meeting") or {}).get("name"),
+        "where_most_of_the_group_is_known": bool(page.get("group_now")),
+        "shares_location": page["consent"]["location"],
+        "health": None if not h else {"overall": h["level"], "heart": h["heart"]["state"],
+                                      "temperature": h["temperature"]["state"], "heat": h["heat"],
+                                      "water": h["hydration"]},
+        "open_calls_for_help": [c["kind"] for c in page["calls"] if c["status"] != "resolved"],
+        "medical_countdown_running": bool(page.get("alert")),
+    }
+
+
+@router.post("/v1/rafeeq/ask")
+def ask_rafeeq(body: AskIn, card: CardHolder = Depends(card_holder)):
+    """A question by voice or text; an answer in the pilgrim's language and one suggested button."""
+    question = body.question.strip()
+    if not question:
+        raise HTTPException(422, "ask something first")
+    with tenant_session(card.tenant_id) as conn:
+        asked = conn.execute(
+            "SELECT count(*)::int AS n FROM rafeeq_question WHERE card_id = %s AND asked_at > now() - interval '1 hour'",
+            (card.card_id,)).fetchone()["n"]
+        if asked >= ask_engine.QUESTIONS_PER_HOUR:
+            raise HTTPException(429, "too many questions this hour; if you need help, press SOS or call your group leader")
+        page = _page(conn, card)
+    # The model is called outside the database session: a slow answer must not hold a connection.
+    import anthropic
+    try:
+        a = ask_engine.ask(question, body.language, situation(page),
+                           [t.model_dump() for t in body.history])
+    except ask_engine.NotConfigured as exc:
+        raise HTTPException(503, f"Ask Rafeeq is not set up on this server: {exc}")
+    except anthropic.AuthenticationError:
+        raise HTTPException(503, "Ask Rafeeq's API key was refused; check ANTHROPIC_API_KEY on the server")
+    except (anthropic.APIConnectionError, anthropic.APITimeoutError):
+        raise HTTPException(503, "Ask Rafeeq cannot be reached just now")
+    except anthropic.APIStatusError as exc:
+        raise HTTPException(502, f"Ask Rafeeq failed ({exc.status_code}); try again")
+    with tenant_session(card.tenant_id) as conn:
+        conn.execute(
+            """INSERT INTO rafeeq_question (pilgrim_id, card_id, language, question, outcome, answer, action, model,
+                                            input_tokens, output_tokens)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (card.pilgrim_id, card.card_id, body.language, question, a.outcome, a.answer, a.action, a.model,
+             a.input_tokens, a.output_tokens))
+        conn.execute("DELETE FROM rafeeq_question WHERE card_id = %s AND asked_at < now() - make_interval(days => %s)",
+                     (card.card_id, ask_engine.KEEP_DAYS))
+    return {"outcome": a.outcome, "answer": a.answer, "action": a.action}

@@ -1,7 +1,9 @@
 import sample from "../../../sample/demo.json";
 import { DataSourceError } from "../api/dataSource";
 import { isRafeeqLang, type HelpKind, type RafeeqLang } from "./help";
-import type { NewReading, RafeeqAlert, RafeeqCall, RafeeqPage, RafeeqSource } from "./source";
+import { prompt } from "./askRules";
+import { ASK_ACTIONS, type AskAnswer, type AskAction, type NewReading, type RafeeqAlert, type RafeeqCall, type RafeeqPage, type RafeeqSource } from "./source";
+import { say } from "./words";
 import { assess, DANGER, RULES, type Reading } from "./vitals";
 
 /**
@@ -162,6 +164,28 @@ export class MockRafeeq implements RafeeqSource {
     this.placeAt = new Date().toISOString();
   }
 
+  /**
+   * In the Claude viewer (the client demo) the question goes to Claude through the viewer, on the
+   * viewer's own account, with the server's own rules. Anywhere else the sample says it cannot answer.
+   */
+  async ask(question: string, language: RafeeqLang, history: { question: string; answer: string }[]): Promise<AskAnswer> {
+    const viewer = (globalThis as { claude?: { use(name: "sample"): Promise<SampleFn | null> } }).claude;
+    const sampleFn = viewer?.use ? await viewer.use("sample").catch(() => null) : null;
+    if (!sampleFn) return { outcome: "answered", answer: say("Sample: Ask Rafeeq answers in the real app.", language), action: "none" };
+    try {
+      const out = await sampleFn.json(prompt(question, language, this.page(), history), { modelTier: "quick", cache: false });
+      const o = (out ?? {}) as { answer?: unknown; action?: unknown };
+      const answer = typeof o.answer === "string" ? o.answer.trim() : "";
+      const action = (ASK_ACTIONS as readonly string[]).includes(String(o.action)) ? (o.action as AskAction) : "none";
+      return answer ? { outcome: "answered", answer, action } : { outcome: "failed", answer: null, action: "none" };
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (code === "refused") return { outcome: "declined", answer: null, action: "none" };
+      if (code === "invalid_json" || code === "empty_completion") return { outcome: "failed", answer: null, action: "none" };
+      throw new DataSourceError(`Ask Rafeeq is not available here (${code ?? "unknown"})`, { status: code === "rate_limited" ? 429 : 503 });
+    }
+  }
+
   async iAmOk(alertId: string) {
     this.fireIfDue();
     if (!this.alert || this.alert.id !== alertId)
@@ -170,4 +194,9 @@ export class MockRafeeq implements RafeeqSource {
     this.quietUntil = Date.now() + RULES.QUIET_AFTER_OK_MIN * 60_000;
     return this.page();
   }
+}
+
+/** The Claude viewer's `sample` capability, as much of it as the demo uses. */
+interface SampleFn {
+  json(input: string, options?: { modelTier?: "quick" | "default" | "complex"; cache?: boolean }): Promise<unknown>;
 }

@@ -96,6 +96,17 @@ go. **Every danger level is proposed until a doctor agrees it** (see
 `backend/api/duyuf/health/rules.py`). The page shares the place only while it
 is open; background tracking needs the phone app.
 
+### Ask Rafeeq
+
+The pilgrim asks by voice or text, in their own language ("Where is my
+group?", "I feel dizzy"), and Claude answers in a few plain sentences from
+their own page, spoken aloud, with one big button for the step it suggests
+(SOS, Find my way, call the leader...). The pilgrim presses it; Rafeeq never
+calls anyone itself. No religious rulings, no diagnoses. Needs
+`ANTHROPIC_API_KEY` in `backend/.env.local`; `DUYUF_RAFEEQ_MODEL=claude-haiku-5-5`
+there makes it about 40 times cheaper per question. 20 questions per card per
+hour; questions kept 7 days.
+
 ### Find my way
 
 "I am lost" first shows the way: where the pilgrim is, where most of their
