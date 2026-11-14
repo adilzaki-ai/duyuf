@@ -1,3 +1,4 @@
+import { TERMINALS, terminalName } from "../../domain/airports";
 import type { Flight, FlightState, LanguageNeed } from "../../domain/types";
 import { fmtNum, getLang, languageName, t } from "../../i18n";
 import { daysBetween, ksaDate } from "../../lib/dates";
@@ -47,5 +48,29 @@ export function Languages({ items }: { items: LanguageNeed[] }) {
       ))}
       {items.length > shown.length && <span className={a.lang}>+{items.length - shown.length}</span>}
     </>
+  );
+}
+
+/** The arrival gate as on the airport's signs, or a quiet "not given yet". */
+export function Gate({ gate }: { gate: string | null }) {
+  return gate ? (
+    <span className={a.gate} dir="ltr">
+      {gate}
+    </span>
+  ) : (
+    <span className={a.noGate}>{t("Not given yet")}</span>
+  );
+}
+
+/** Suggested terminals for an airport, for a terminal box's `list`. */
+export function TerminalList({ id, airport }: { id: string; airport: string }) {
+  return (
+    <datalist id={id}>
+      {(TERMINALS[airport] ?? []).map((n) => (
+        <option key={n} value={n}>
+          {terminalName(n)}
+        </option>
+      ))}
+    </datalist>
   );
 }

@@ -309,3 +309,41 @@ export function usePilgrimHealth(pilgrimId: string | null) {
     refetchInterval: 15_000,
   });
 }
+
+/* ---- the AI helpers ---- */
+
+export function useAiStatus() {
+  const { source } = useSession();
+  return useQuery({ queryKey: ["ai-status"], queryFn: () => source.aiStatus(), staleTime: 5 * 60_000 });
+}
+
+export function useAiBrief(language: "en" | "ar", enabled: boolean) {
+  const { source } = useSession();
+  return useQuery({
+    queryKey: ["ai-brief", language],
+    queryFn: () => source.aiBrief(language, false),
+    enabled,
+    staleTime: 10 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useRefreshAiBrief(language: "en" | "ar") {
+  const { source } = useSession();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => source.aiBrief(language, true),
+    onSuccess: (b) => qc.setQueryData(["ai-brief", language], b),
+  });
+}
+
+export function useAiCopilot() {
+  const { source } = useSession();
+  return useMutation({ mutationFn: (v: { id: string; language: "en" | "ar" }) => source.aiCopilot(v.id, v.language) });
+}
+
+export function useAiAdvice() {
+  const { source } = useSession();
+  return useMutation({ mutationFn: (v: { language: "en" | "ar"; hours: number }) => source.aiAdvice(v.language, v.hours) });
+}

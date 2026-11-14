@@ -1,10 +1,16 @@
 import sample from "../../../sample/demo.json";
+import { cleanGate, cleanTerminal, GATE_PATTERN } from "../domain/airports";
 import { brief, flightState, landingDay, normalFlightNumber, waves } from "../domain/brief";
 import { checkRow, IMPORT_COLUMNS } from "../domain/importRow";
 import { allowedActions, incidentRefusal, type IncidentAction, type IncidentKind, type Priority } from "../domain/incidents";
 import { blockOf, load } from "../domain/plan";
 import { MOVES, refusal, STATUSES, type Status } from "../domain/journey";
 import type {
+  AiAdvice,
+  AiBrief,
+  AiCopilot,
+  AiGap,
+  AiStatus,
   AnalystAnswer,
   AnalystStatus,
   Arrivals,
@@ -50,7 +56,8 @@ import type {
   UnplannedGroup,
   WhatIf,
 } from "../domain/types";
-import { addDays, ksaDate, ksaIso } from "../lib/dates";
+import { addDays, ksaDate, ksaIso, KSA_TZ } from "../lib/dates";
+import { askViewer, viewerReady } from "../ai/viewerAi";
 import { isRafeeqLang, type RafeeqLang } from "../rafeeq/help";
 import { assess, type Reading } from "../rafeeq/vitals";
 import { DataSourceError, type DataSource } from "./dataSource";
@@ -78,8 +85,25 @@ interface FlightRecord {
   scheduled_at: string;
   estimated_at: string | null;
   landed_at: string | null;
+  terminal: string | null;
+  gate: string | null;
   note: string | null;
   history: FlightEvent[];
+}
+
+/** The terminal and gate a change names, cleaned as the platform cleans them; the rest left out. */
+function placeOf(c: { terminal?: string | null; gate?: string | null }): { terminal?: string | null; gate?: string | null } {
+  const out: { terminal?: string | null; gate?: string | null } = {};
+  if ("terminal" in c) {
+    out.terminal = cleanTerminal(c.terminal);
+    if ((out.terminal?.length ?? 0) > 40) throw new DataSourceError("a terminal name is at most 40 letters", { status: 422 });
+  }
+  if ("gate" in c) {
+    out.gate = cleanGate(c.gate);
+    if (out.gate && !GATE_PATTERN.test(out.gate))
+      throw new DataSourceError("a gate is letters and digits, like H12", { status: 422 });
+  }
+  return out;
 }
 
 const WINDOW_DAYS = 7;
@@ -198,6 +222,8 @@ export class MockSource implements DataSource {
         scheduled_at: scheduled,
         estimated_at: f.delay_minutes > 0 ? plusMinutes(scheduled, f.delay_minutes) : null,
         landed_at: null,
+        terminal: f.terminal ?? null,
+        gate: f.gate ?? null,
         note: null,
         history: [{ kind: "created", detail: {}, actor: "Demo load", at: at(this.today, -20, 0) }],
       });
@@ -544,6 +570,7 @@ export class MockSource implements DataSource {
     for (const code of [n.origin_airport, n.arrival_airport])
       if (!/^[A-Za-z]{3}$/.test(code)) throw new DataSourceError("an airport is three letters, like JED", { status: 422 });
     const scheduled = ksaIso(new Date(n.scheduled_at));
+    const where = placeOf(n);
     for (const f of this.flights.values())
       if (f.number === number && Date.parse(f.scheduled_at) === Date.parse(scheduled))
         throw new DataSourceError(`already exists: ${number} at that time`, { status: 409 });
@@ -556,6 +583,8 @@ export class MockSource implements DataSource {
       scheduled_at: scheduled,
       estimated_at: null,
       landed_at: null,
+      terminal: where.terminal ?? null,
+      gate: where.gate ?? null,
       note: n.note ?? null,
       history: [{ kind: "created", detail: { scheduled_at: scheduled }, actor: ACTOR, at: this.now() }],
     });
@@ -570,6 +599,10 @@ export class MockSource implements DataSource {
         throw new DataSourceError(`${f.number} has landed; its time is no longer an estimate`, { status: 409 });
       f.estimated_at = change.estimated_at ? ksaIso(new Date(change.estimated_at)) : null;
       f.history.push({ kind: "expected", detail: { expected_at: f.estimated_at }, actor: ACTOR, at: this.now() });
+    }
+    if ("terminal" in change || "gate" in change) {
+      Object.assign(f, placeOf(change));
+      f.history.push({ kind: "gate", detail: { terminal: f.terminal, gate: f.gate }, actor: ACTOR, at: this.now() });
     }
     if ("note" in change) f.note = change.note ?? null;
     return this.detail(id);
@@ -1007,6 +1040,101 @@ export class MockSource implements DataSource {
       alerts: [],
       places: [place],
     };
+  }
+
+  /* ---- the AI helpers: in the client demo, Claude through the viewer with the server's own instructions ---- */
+
+  async aiStatus(): Promise<AiStatus> {
+    return (await viewerReady())
+      ? { ready: true, model: "Claude, through the viewer" }
+      : { ready: false, model: "none", reason: "sample mode: the AI helpers need the platform" };
+  }
+
+  private gaps(a: Arrivals): AiGap[] {
+    const when = (iso: string) =>
+      new Intl.DateTimeFormat("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: KSA_TZ })
+        .format(new Date(iso))
+        .replace(",", "");
+    const out: AiGap[] = [];
+    for (const row of a.load)
+      for (const s of row.short)
+        out.push({ gap: out.length + 1, airport: row.airport, from: when(row.start), hours: a.slot_hours, kind: s.kind, language: s.language, short: s.short, flights: row.flights });
+    return out;
+  }
+
+  async aiBrief(language: "en" | "ar", _refresh: boolean): Promise<AiBrief> {
+    const [ov, arr, inc, health] = await Promise.all([this.overview(), this.arrivals(48), this.incidents({ status: "active" }), this.health()]);
+    const flights = arr.flights.filter((f) => !f.landed_at);
+    const situation = {
+      operator: sample.operator.name,
+      pilgrims_by_stage: ov.by_status,
+      needs_of_pilgrims_not_yet_home: ov.needs,
+      arrivals_next_48h: {
+        flights: flights.length,
+        pilgrims: flights.reduce((n, f) => n + f.brief.pilgrims, 0),
+        delayed: flights.filter((f) => f.state === "delayed").length,
+        due_not_confirmed: flights.filter((f) => f.state === "due").length,
+        gaps: this.gaps(arr),
+        groups_landing_with_pilgrims_on_no_flight: arr.unplanned.map((g) => ({ group: g.code, arrives: g.arrival_date, on_no_flight: g.without_flight })),
+      },
+      incidents: { ...inc.stats, open_by_kind: inc.items.reduce<Record<string, number>>((m, i) => ({ ...m, [i.kind]: (m[i.kind] ?? 0) + 1 }), {}) },
+      health: { sharing: health.stats.sharing_health, danger: health.stats.danger, fever: health.stats.fever },
+    };
+    const b = await askViewer<AiBrief>("BRIEF", language, situation, "Write the shift briefing from these totals.");
+    const screens = ["overview", "arrivals", "resources", "incidents", "health", "groups", "pilgrims"];
+    return { ...b, points: (b.points ?? []).filter((p) => screens.includes(p.screen)).slice(0, 5), model: "Claude, through the viewer" };
+  }
+
+  async aiCopilot(incidentId: string, language: "en" | "ar"): Promise<AiCopilot> {
+    const i = await this.incident(incidentId);
+    const p = i.pilgrim_id ? this.people.get(i.pilgrim_id) : undefined;
+    const g = i.group_id ? this.groupsById.get(i.group_id) : undefined;
+    const teams = (await this.incidents({ status: "all" })).teams;
+    const situation = {
+      incident: {
+        kind: i.kind,
+        priority: i.priority,
+        status: i.status,
+        minutes_open: Math.round((this.clock().getTime() - Date.parse(i.opened_at)) / 60_000),
+        location: i.location,
+        description: i.description,
+        raised_by: i.reported_by,
+        team: i.team,
+      },
+      history: i.history.slice(-8).map((h) => ({ step: h.kind, note: h.note, team: h.team })),
+      group: { name: g?.name ?? null, leader_first_name: g?.leader_name?.split(" ")[0] ?? null },
+      teams_used_lately: teams,
+      ...(p ? { pilgrim: { first_name: p.full_name.split(" ")[0], language: p.language ?? "en", needs: p.needs, stage: p.status } } : {}),
+    };
+    const c = await askViewer<AiCopilot>("COPILOT", language, situation, "Help the desk with this incident.");
+    return { ...c, model: "Claude, through the viewer" };
+  }
+
+  async aiAdvice(language: "en" | "ar", hours: number): Promise<AiAdvice> {
+    const arr = await this.arrivals(hours);
+    const gaps = this.gaps(arr);
+    if (!gaps.length) return { summary: null, items: [], gaps, model: null };
+    const blocks = arr.load.map((row) => ({
+      airport: row.airport,
+      flights: row.flights,
+      need: row.need,
+      on_shift: row.have,
+      spare: {
+        wheelchair: row.have.wheelchair - row.need.wheelchair,
+        bus: row.have.bus - row.need.bus,
+        interpreter: Object.fromEntries(Object.entries(row.have.interpreter).map(([l, n]) => [l, n - (row.need.interpreter[l] ?? 0)])),
+      },
+    }));
+    const out = await askViewer<{ summary: string; items: AiAdvice["items"] }>("ADVISOR", language, { hours_ahead: hours, block_hours: arr.slot_hours, gaps, blocks }, "Explain each gap and how to close it.");
+    const airports = new Set(arr.load.map((r) => r.airport));
+    const items = (out.items ?? []).flatMap((it) => {
+      const of = gaps.find((g) => g.gap === it.gap);
+      if (!of) return [];
+      const x = it.extra;
+      const ok = x && airports.has(x.airport) && (x.kind === "interpreter") === !!x.language && Number.isInteger(x.quantity) && x.quantity >= 1;
+      return [{ ...it, extra: ok ? x : null, of }];
+    });
+    return { summary: out.summary, items, gaps, model: "Claude, through the viewer" };
   }
 
   /* ---- signing in, and staff: the sample has no sign in; its staff list lives until reload ---- */

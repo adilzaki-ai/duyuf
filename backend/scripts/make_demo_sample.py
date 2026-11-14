@@ -81,14 +81,16 @@ LANGUAGE = {"ID": "id", "PK": "ur", "IN": "ur", "EG": "ar", "JO": "ar", "TR": "t
 # Invented flights, on real airline codes. number, from, to, day (from today),
 # Saudi time, minutes late, and which pilgrims: (group, first, last) by position.
 # Spread through the day so a board opened at any hour has flights on it.
+# The terminal and gate are invented; the last flight has none yet, as often
+# happens three days out.
 FLIGHTS = [
-    ("PK 743", "KHI", "JED", 0, "05:40", 0, [("U-PK-0322", 0, 24)]),
-    ("SV 705", "KHI", "JED", 0, "21:15", 0, [("U-PK-0322", 24, 48)]),
-    ("MS 683", "CAI", "JED", 1, "04:10", 0, [("U-EG-0207", 0, 30)]),
-    ("GA 980", "UPG", "MED", 1, "09:25", 95, [("U-ID-0430", 0, 44)]),
-    ("6E 63", "HYD", "JED", 2, "02:50", 0, [("U-IN-0118", 0, 34)]),
-    ("SV 3304", "ABV", "MED", 2, "13:05", 0, [("U-NG-0095", 0, 26)]),
-    ("TK 92", "IST", "MED", 3, "07:00", 20, [("U-TR-0155", 0, 26)]),
+    ("PK 743", "KHI", "JED", 0, "05:40", 0, [("U-PK-0322", 0, 24)], "Hajj Terminal", "H4"),
+    ("SV 705", "KHI", "JED", 0, "21:15", 0, [("U-PK-0322", 24, 48)], "Terminal 1", "A21"),
+    ("MS 683", "CAI", "JED", 1, "04:10", 0, [("U-EG-0207", 0, 30)], "Hajj Terminal", "H9"),
+    ("GA 980", "UPG", "MED", 1, "09:25", 95, [("U-ID-0430", 0, 44)], "Main Terminal", "6"),
+    ("6E 63", "HYD", "JED", 2, "02:50", 0, [("U-IN-0118", 0, 34)], "Hajj Terminal", "H2"),
+    ("SV 3304", "ABV", "MED", 2, "13:05", 0, [("U-NG-0095", 0, 26)], "Main Terminal", "3"),
+    ("TK 92", "IST", "MED", 3, "07:00", 20, [("U-TR-0155", 0, 26)], None, None),
 ]
 
 # What the operator has on shift: airport, kind, language, how many, from and to
@@ -244,7 +246,8 @@ def main() -> None:
         "note": "Invented people. Passport numbers, names and phones are made up.",
         "groups": groups, "pilgrims": pilgrims,
         "flights": [{"number": n, "origin_airport": o, "arrival_airport": a, "day": d, "time": t,
-                     "delay_minutes": late} for n, o, a, d, t, late, _ in FLIGHTS],
+                     "delay_minutes": late, "terminal": term, "gate": gate}
+                    for n, o, a, d, t, late, _, term, gate in FLIGHTS],
         "resources": [{"airport": a, "kind": k, "language": lang, "quantity": q, "from_day": f, "to_day": t}
                       for a, k, lang, q, f, t in RESOURCES],
         "incidents": [{"kind": k, "priority": pr, "group_code": g, "pilgrim_index": i, "location": loc,

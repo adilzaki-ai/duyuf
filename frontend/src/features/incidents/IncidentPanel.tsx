@@ -6,6 +6,7 @@ import { Failed, Loading, u } from "../../design/ui";
 import { incidentStatusLabel } from "../../domain/incidents";
 import type { IncidentEvent } from "../../domain/types";
 import { fmtDateTime, t } from "../../i18n";
+import { Copilot } from "../ai/Copilot";
 import { IncidentHealth, PlaceText } from "../health/HealthPage";
 import p from "../pilgrims/pilgrims.module.css";
 import s from "./incidents.module.css";
@@ -122,6 +123,7 @@ export function IncidentPanel({ id, teams, onClose }: { id: string; teams: strin
             </li>
           </ul>
           {q.data.health && <IncidentHealth health={q.data.health} />}
+          {canWork && <Copilot key={q.data.id} incident={q.data} />}
           {q.data.resolution && (
             <>
               <h3 className={p.h3}>{t("How it was resolved")}</h3>
