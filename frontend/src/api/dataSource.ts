@@ -37,7 +37,14 @@ import type {
   PilgrimFilter,
   PilgrimHealth,
   RafeeqCardInfo,
+  NewReturnLeg,
+  NewVenue,
+  ReturnLeg,
+  StaffBooking,
+  Venue,
+  VenueChange,
 } from "../domain/types";
+import type { StaffAction } from "../domain/bookings";
 import type { RafeeqLang } from "../rafeeq/help";
 
 /**
@@ -111,6 +118,19 @@ export interface DataSource {
   aiCopilot(incidentId: string, language: "en" | "ar"): Promise<AiCopilot>;
   /** Each gap on the arrivals board explained, with a fix to preview. */
   aiAdvice(language: "en" | "ar", hours: number): Promise<AiAdvice>;
+  /** A group's flights home, in the order they fly. */
+  returnLegs(groupId: string): Promise<ReturnLeg[]>;
+  /** All legs at once; an empty list clears them. */
+  setReturnLegs(groupId: string, legs: NewReturnLeg[]): Promise<ReturnLeg[]>;
+  /** The places offered to pilgrims, switched-off ones too. */
+  venues(): Promise<Venue[]>;
+  addVenue(v: NewVenue): Promise<Venue>;
+  updateVenue(id: string, change: VenueChange): Promise<Venue>;
+  /** Waiting for an answer and waiting for payment first, then the rest; `waiting` counts requests. */
+  bookings(): Promise<{ bookings: StaffBooking[]; waiting: number }>;
+  booking(id: string): Promise<StaffBooking>;
+  /** Confirm (pay at the place), ask for payment online, decline, or cancel; the note is shown to the pilgrim. */
+  decideBooking(id: string, action: StaffAction, amount?: number | null, note?: string | null): Promise<StaffBooking>;
   staff(): Promise<StaffMember[]>;
   addStaff(s: NewStaff): Promise<StaffMember>;
   updateStaff(id: string, change: StaffChange): Promise<StaffMember>;

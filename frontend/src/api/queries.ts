@@ -16,7 +16,11 @@ import type {
   StaffChange,
   PilgrimFilter,
   WhatIf,
+  NewReturnLeg,
+  NewVenue,
+  VenueChange,
 } from "../domain/types";
+import type { StaffAction } from "../domain/bookings";
 import type { RafeeqLang } from "../rafeeq/help";
 
 export function useOverview() {
@@ -346,4 +350,57 @@ export function useAiCopilot() {
 export function useAiAdvice() {
   const { source } = useSession();
   return useMutation({ mutationFn: (v: { language: "en" | "ar"; hours: number }) => source.aiAdvice(v.language, v.hours) });
+}
+
+/* ---- flights home, places and bookings ---- */
+
+export function useReturnLegs(groupId: string) {
+  const { source } = useSession();
+  return useQuery({ queryKey: ["return-legs", groupId], queryFn: () => source.returnLegs(groupId) });
+}
+
+export function useSetReturnLegs(groupId: string) {
+  const { source } = useSession();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (legs: NewReturnLeg[]) => source.setReturnLegs(groupId, legs),
+    onSuccess: (legs) => qc.setQueryData(["return-legs", groupId], legs),
+  });
+}
+
+export function useVenues() {
+  const { source } = useSession();
+  return useQuery({ queryKey: ["venues"], queryFn: () => source.venues() });
+}
+
+export function useSaveVenue() {
+  const { source } = useSession();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (x: { id?: string; v: NewVenue | VenueChange }) => (x.id ? source.updateVenue(x.id, x.v as VenueChange) : source.addVenue(x.v as NewVenue)),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["venues"] }),
+  });
+}
+
+export function useBookings() {
+  const { source } = useSession();
+  /* pilgrims are waiting: look again every half minute */
+  return useQuery({ queryKey: ["bookings"], queryFn: () => source.bookings(), refetchInterval: 30_000 });
+}
+
+export function useBooking(id: string | null) {
+  const { source } = useSession();
+  return useQuery({ queryKey: ["booking", id], queryFn: () => source.booking(id!), enabled: !!id });
+}
+
+export function useDecideBooking(id: string) {
+  const { source } = useSession();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (x: { action: StaffAction; amount?: number | null; note?: string | null }) => source.decideBooking(id, x.action, x.amount, x.note),
+    onSuccess: (b) => {
+      qc.setQueryData(["booking", id], b);
+      void qc.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
 }

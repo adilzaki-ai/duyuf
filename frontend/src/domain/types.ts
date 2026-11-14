@@ -20,7 +20,10 @@ export type Scope =
   | "staff:manage"
   | "rafeeq:issue"
   | "health:read"
-  | "device:write";
+  | "device:write"
+  | "booking:read"
+  | "booking:write"
+  | "venue:write";
 
 export type Role = "administrator" | "supervisor" | "staff" | "viewer" | "medic";
 
@@ -79,6 +82,8 @@ export interface Pilgrim {
   updated_at: string;
   arrival_flight_id: string | null;
   flight_number: string | null;
+  /** the last day of the visa, as printed on it; null when not entered */
+  visa_expires_on?: string | null;
   /** the moves the platform will accept from here */
   allowed: Status[];
 }
@@ -326,6 +331,7 @@ export interface NewPilgrim {
   phone: string | null;
   language: string | null;
   needs: Need[];
+  visa_expires_on?: string | null;
 }
 
 export interface PilgrimChange {
@@ -334,6 +340,7 @@ export interface PilgrimChange {
   phone?: string | null;
   language?: string | null;
   needs?: Need[];
+  visa_expires_on?: string | null;
   /** only null: takes the pilgrim off their arrival flight */
   arrival_flight_id?: null;
 }
@@ -640,4 +647,87 @@ export interface AiAdvice {
   items: { gap: number; explain: string; fix: string; extra: ExtraResource | null; of: AiGap }[];
   gaps: AiGap[];
   model: string | null;
+}
+
+/* ---- flights home, places and bookings ---- */
+
+export interface ReturnLeg {
+  seq: number;
+  flight_number: string;
+  from_airport: string;
+  to_airport: string;
+  departs_at: string;
+  arrives_at: string | null;
+}
+
+export interface NewReturnLeg {
+  flight_number: string;
+  from_airport: string;
+  to_airport: string;
+  departs_at: string;
+  arrives_at?: string | null;
+}
+
+export interface Venue {
+  id: string;
+  kind: import("./bookings").VenueKind;
+  city: "makkah" | "madinah";
+  name: string;
+  name_ar: string | null;
+  stars: number | null;
+  price_level: number | null;
+  cuisine: string | null;
+  rating: number | null;
+  rating_count: number | null;
+  rating_source: string | null;
+  site_id: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  website: string | null;
+  address: string | null;
+  lat: number | null;
+  lon: number | null;
+  price_from: number | null;
+  bookable: boolean;
+  active: boolean;
+  room_types: import("../rafeeq/rooms").RoomType[];
+  accessibility: import("../rafeeq/rooms").Access[];
+  photos: string[];
+}
+
+export type NewVenue = Omit<Venue, "id">;
+export type VenueChange = Partial<Omit<Venue, "id" | "kind" | "city" | "site_id">>;
+
+export interface StaffBooking {
+  id: string;
+  ref: number;
+  venue: { id: string; kind: import("./bookings").VenueKind; city: "makkah" | "madinah"; name: string; name_ar: string | null; phone: string | null; site_id: string | null };
+  for_date: string;
+  at_time: string | null;
+  nights: number | null;
+  people: number;
+  note: string | null;
+  rooms: number | null;
+  room_type: import("../rafeeq/rooms").RoomType | null;
+  bed: import("../rafeeq/rooms").Bed | null;
+  access_needs: import("../rafeeq/rooms").Access[];
+  extras: import("../rafeeq/rooms").Extra[];
+  status: import("./bookings").BookingStatus;
+  amount: number | null;
+  currency: string;
+  pay_at: "online" | "venue" | null;
+  payment_status: "none" | "paid" | "refund_due" | "refunded";
+  payment_provider: string | null;
+  payment_ref: string | null;
+  paid_at: string | null;
+  staff_note: string | null;
+  requested_at: string;
+  updated_at: string;
+  pilgrim_id: string;
+  full_name: string;
+  full_name_ar: string | null;
+  group_code: string;
+  group_id: string;
+  history?: { kind: string; note: string | null; actor: string; at: string }[];
 }

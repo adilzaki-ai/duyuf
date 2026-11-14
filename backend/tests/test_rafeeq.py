@@ -184,3 +184,14 @@ def test_the_app_role_cannot_read_a_card(op_a):
     with pytest.raises(Exception, match="permission denied"):
         with tenant_session(tid) as conn:
             conn.execute("SELECT token_hash FROM rafeeq_card").fetchall()
+
+
+def test_calling_the_ambulance_tells_the_team(client, op_a):
+    _, p = _pilgrim(client, op_a, code="U-PK-0951", passport="AM1234567")
+    card, _ = _card(client, op_a, p["id"])
+    r = _help(client, card, "medical", location="21.42250, 39.82620 (±20 m)")
+    assert r.status_code == 200, r.text
+    call = r.json()["calls"][0]
+    assert call["kind"] == "medical" and call["status"] == "open"
+    inc = client.get(f"/v1/incidents/{call['id']}", headers=as_op(op_a)).json()
+    assert inc["priority"] == "urgent" and "ambulance (997)" in inc["description"]

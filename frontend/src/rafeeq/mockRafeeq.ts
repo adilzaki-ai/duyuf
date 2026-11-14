@@ -2,9 +2,25 @@ import sample from "../../../sample/demo.json";
 import { DataSourceError } from "../api/dataSource";
 import { isRafeeqLang, type HelpKind, type RafeeqLang } from "./help";
 import { prompt } from "./askRules";
-import { ASK_ACTIONS, type AskAnswer, type AskAction, type NewReading, type RafeeqAlert, type RafeeqCall, type RafeeqPage, type RafeeqSource } from "./source";
+import {
+  ASK_ACTIONS,
+  type AskAnswer,
+  type AskAction,
+  type Booking,
+  type NewBooking,
+  type NewReading,
+  type RafeeqAlert,
+  type RafeeqCall,
+  type RafeeqPage,
+  type RafeeqSource,
+  type ReturnLeg,
+  type Venue,
+  type VenueKind,
+} from "./source";
 import { say } from "./words";
 import { assess, DANGER, RULES, type Reading } from "./vitals";
+import { SLEEPS, type Access, type RoomType } from "./rooms";
+import { sampleWeather } from "./weatherRules";
 
 /**
  * Rafeeq on the sample, with no backend: one invented pilgrim from
@@ -53,6 +69,10 @@ export class MockRafeeq implements RafeeqSource {
       operator_ar: sample.operator.name_ar,
       language: isRafeeqLang(lang) ? lang : "en",
       is_demo: true,
+      status: p.status,
+      visa_expires_on: p.visa_ends_in_days == null ? null : daysFromToday(p.visa_ends_in_days),
+      leaving_on: daysFromToday(g.depart_in_days),
+      return_legs: legsOf(g.code, g.depart_in_days),
     };
   }
 
@@ -186,6 +206,115 @@ export class MockRafeeq implements RafeeqSource {
     }
   }
 
+  /* ---- places and bookings: the operator's answer is simulated a few seconds after a request ---- */
+
+  private booked: Booking[] = [];
+  private static readonly ANSWER_MS = 5_000;
+  private static readonly TEST_CARD = "4242424242424242";
+
+  private answerDue() {
+    const now = Date.now();
+    for (const b of this.booked) {
+      if (b.status !== "requested" || now - Date.parse(b.requested_at) < MockRafeeq.ANSWER_MS) continue;
+      const v = VENUES.find((x) => x.id === b.venue.id)!;
+      b.updated_at = new Date().toISOString();
+      if (v.kind === "hotel" && v.price_from) {
+        /* a hotel asks for payment first: the room type's price (the sample's own guess) for each room and night */
+        b.status = "awaiting_payment";
+        b.pay_at = "online";
+        const factor = ROOM_PRICE[b.room_type ?? "double"] ?? 1;
+        b.amount = Math.round(v.price_from * factor * (b.rooms ?? 1) * (b.nights ?? 1));
+      } else {
+        b.status = "confirmed";
+        b.pay_at = "venue";
+        b.amount = v.price_from ? v.price_from * b.people : null;
+      }
+    }
+  }
+
+  private mine() {
+    this.answerDue();
+    return { bookings: this.booked.map((b) => ({ ...b, venue: { ...b.venue } })), payments: { online: "sandbox" } };
+  }
+
+  async venues(kind?: VenueKind, city?: "makkah" | "madinah") {
+    return { venues: VENUES.filter((v) => (!kind || v.kind === kind) && (!city || v.city === city)), payments: { online: "sandbox" } };
+  }
+
+  async bookings() {
+    return this.mine();
+  }
+
+  async book(n: NewBooking) {
+    const v = VENUES.find((x) => x.id === n.venue_id);
+    if (!v) throw new DataSourceError("no such place", { status: 404 });
+    if (v.kind === "hotel" && !n.nights) throw new DataSourceError("say how many nights", { status: 422 });
+    if (v.kind === "restaurant" && !n.at_time) throw new DataSourceError("say what time", { status: 422 });
+    const hotel = v.kind === "hotel";
+    if (hotel && !n.room_type) throw new DataSourceError("choose a room type", { status: 422 });
+    if (hotel && v.room_types?.length && !v.room_types.includes(n.room_type!))
+      throw new DataSourceError("this hotel does not have that room type", { status: 422 });
+    if (hotel && (n.rooms ?? 1) * SLEEPS[n.room_type!] < n.people)
+      throw new DataSourceError("add rooms or choose a bigger room", { status: 422 });
+    const now = new Date().toISOString();
+    const b: Booking = {
+      id: `b-${this.booked.length}`,
+      ref: 3001 + this.booked.length,
+      venue: { id: v.id, kind: v.kind, city: v.city, name: v.name, name_ar: v.name_ar, phone: v.phone, site_id: v.site_id },
+      for_date: n.for_date,
+      at_time: n.at_time ?? null,
+      nights: v.kind === "hotel" ? (n.nights ?? null) : null,
+      people: n.people,
+      note: n.note ?? null,
+      rooms: hotel ? (n.rooms ?? 1) : null,
+      room_type: hotel ? (n.room_type ?? null) : null,
+      bed: hotel ? (n.bed ?? null) : null,
+      access_needs: hotel ? (n.access_needs ?? []) : [],
+      extras: hotel ? (n.extras ?? []) : [],
+      status: "requested",
+      amount: null,
+      currency: "SAR",
+      pay_at: null,
+      payment_status: "none",
+      payment_ref: null,
+      staff_note: null,
+      requested_at: now,
+      updated_at: now,
+    };
+    this.booked.push(b);
+    return { booking: b.id, ...this.mine() };
+  }
+
+  async cancelBooking(id: string) {
+    this.answerDue();
+    const b = this.booked.find((x) => x.id === id);
+    if (!b) throw new DataSourceError("no such booking", { status: 404 });
+    if (b.status !== "requested" && b.status !== "awaiting_payment")
+      throw new DataSourceError("this booking is confirmed; ask your group leader to cancel it", { status: 409 });
+    b.status = "cancelled";
+    b.updated_at = new Date().toISOString();
+    return this.mine();
+  }
+
+  async pay(id: string, cardNumber: string) {
+    this.answerDue();
+    const b = this.booked.find((x) => x.id === id);
+    if (!b) throw new DataSourceError("no such booking", { status: 404 });
+    if (b.status !== "awaiting_payment") throw new DataSourceError("cannot pay a booking that is not waiting for payment", { status: 409 });
+    if (cardNumber.replace(/\s/g, "") !== MockRafeeq.TEST_CARD)
+      throw new DataSourceError("use the test card 4242 4242 4242 4242: this is a test payment", { status: 402 });
+    b.status = "confirmed";
+    b.payment_status = "paid";
+    b.payment_ref = `TEST-${Math.random().toString(16).slice(2, 10).toUpperCase()}`;
+    b.updated_at = new Date().toISOString();
+    return this.mine();
+  }
+
+  /** The month's typical weather, marked as a sample: the demo cannot reach a forecast. */
+  async weather() {
+    return sampleWeather();
+  }
+
   async iAmOk(alertId: string) {
     this.fireIfDue();
     if (!this.alert || this.alert.id !== alertId)
@@ -194,6 +323,47 @@ export class MockRafeeq implements RafeeqSource {
     this.quietUntil = Date.now() + RULES.QUIET_AFTER_OK_MIN * 60_000;
     return this.page();
   }
+}
+
+/** The sample's simulated answer prices a room type against the hotel's cheapest (double) room. Invented. */
+const ROOM_PRICE: Record<string, number> = { single: 0.85, double: 1, twin: 1, triple: 1.3, quad: 1.55, family: 1.8, suite: 2.6 };
+
+/** The sample's places, with ids the page can hold. Invented names; ratings marked "Sample". */
+const VENUES: Venue[] = sample.venues.map((v, i) => ({
+  ...v,
+  id: `v-${i}`,
+  kind: v.kind as VenueKind,
+  city: v.city as Venue["city"],
+  room_types: v.room_types as RoomType[],
+  accessibility: v.accessibility as Access[],
+  photos: [],
+  phone: null,
+  whatsapp: null,
+  email: null,
+  website: null,
+  address: null,
+  bookable: true,
+}));
+
+/** A group's flights home on its departure day, in Saudi time. */
+function legsOf(code: string, departInDays: number): ReturnLeg[] {
+  const legs = (sample.return_legs as Record<string, { flight_number: string; from_airport: string; to_airport: string; time: string; minutes: number }[]>)[code] ?? [];
+  return legs.map((l, i) => {
+    const departs = new Date(`${daysFromToday(departInDays)}T${l.time}:00+03:00`);
+    return {
+      seq: i + 1,
+      flight_number: l.flight_number,
+      from_airport: l.from_airport,
+      to_airport: l.to_airport,
+      departs_at: departs.toISOString(),
+      arrives_at: new Date(departs.getTime() + l.minutes * 60_000).toISOString(),
+    };
+  });
+}
+
+/** Today in Saudi Arabia plus n days, as 2026-11-14. */
+function daysFromToday(n: number): string {
+  return new Date(Date.now() + 3 * 3600_000 + n * 86_400_000).toISOString().slice(0, 10);
 }
 
 /** The Claude viewer's `sample` capability, as much of it as the demo uses. */

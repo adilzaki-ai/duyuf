@@ -16,6 +16,7 @@ export const IMPORT_COLUMNS = [
   "phone",
   "language",
   "needs",
+  "visa_expires_on",
 ] as const;
 
 export const NEEDS: readonly Need[] = ["wheelchair", "medical", "elderly", "dietary", "unaccompanied_minor"];
@@ -62,6 +63,13 @@ export function checkRow(raw: Record<string, string>): {
       problems.push({ field: "date_of_birth", message: "not a likely birth date" });
     }
   }
+  let visa_expires_on: string | null = null;
+  const visa = get("visa_expires_on");
+  if (visa) {
+    visa_expires_on = birthDate(visa);
+    if (!visa_expires_on) problems.push({ field: "visa_expires_on", message: "a date like 2026-12-20 or 20/12/2026" });
+    else if (visa_expires_on < "2000-01-01") problems.push({ field: "visa_expires_on", message: "not a likely visa date" });
+  }
   const nationality = (get("nationality") ?? "").toUpperCase();
   if (!/^[A-Z]{2}$/.test(nationality)) problems.push({ field: "nationality", message: "two letters, like PK" });
   const passport_no = (get("passport_no") ?? "").replace(/\s+/g, "").toUpperCase();
@@ -89,6 +97,7 @@ export function checkRow(raw: Record<string, string>): {
       phone: get("phone"),
       language,
       needs: NEEDS.filter((n) => needList.includes(n)),
+      visa_expires_on,
     },
   };
 }

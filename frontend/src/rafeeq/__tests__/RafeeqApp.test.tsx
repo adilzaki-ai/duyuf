@@ -31,10 +31,13 @@ describe("Rafeeq", () => {
   it("sends a call for help after one check, follows it, and hears that they are fine", async () => {
     render(<RafeeqApp start={sample()} />);
     expect(await screen.findByRole("heading", { name: /^Assalamu alaikum, / })).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Sample: nothing is sent to anyone.");
+    expect(screen.getAllByRole("status").find((x) => x.textContent?.startsWith("Sample: nothing is sent to anyone."))).toBeTruthy();
     expect(tel("911")).toHaveLength(1);
 
-    await userEvent.click(screen.getByRole("button", { name: /SOS/ }));
+    /* the SOS panel: alert the group, or call the ambulance (a phone link to 997) */
+    const sos = screen.getByRole("region", { name: "SOS" });
+    expect(within(sos).getByRole("link", { name: /Call ambulance/ })).toHaveAttribute("href", "tel:997");
+    await userEvent.click(within(sos).getByRole("button", { name: /Alert my group/ }));
     const ask = screen.getByRole("alertdialog");
     expect(ask).toHaveTextContent("Send a call for help now?");
     await userEvent.click(within(ask).getByRole("button", { name: "Yes, send" }));
@@ -43,6 +46,17 @@ describe("Rafeeq", () => {
     expect(call).toHaveTextContent("#2001");
     await userEvent.click(within(call).getByRole("button", { name: "I am fine now" }));
     expect(await within(call).findByText("You said you are fine.")).toBeInTheDocument();
+  });
+
+  it("calling the ambulance tells the group too, without a question first", async () => {
+    render(<RafeeqApp start={sample()} />);
+    await screen.findByRole("heading", { name: /^Assalamu alaikum, / });
+    const amb = within(screen.getByRole("region", { name: "SOS" })).getByRole("link", { name: /Call ambulance/ });
+    /* the dialer is the phone's: jsdom only follows the click */
+    amb.addEventListener("click", (e) => e.preventDefault());
+    await userEvent.click(amb);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(await screen.findByText("Ambulance called")).toBeInTheDocument();
   });
 
   it("never says a call went out when it did not, and shows who to call", async () => {
@@ -85,7 +99,7 @@ describe("Rafeeq", () => {
     render(<RafeeqApp start={sample("rfq_sample.p-3.ur")} />);
     expect(await screen.findByRole("heading", { name: /^السلام علیکم، / })).toBeInTheDocument();
     expect(document.documentElement.dir).toBe("rtl");
-    expect(screen.getByRole("button", { name: /ایمرجنسی/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /اپنے گروپ کو اطلاع دیں/ })).toBeInTheDocument();
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "زبان" }), "fr");
     expect(await screen.findByRole("button", { name: /^Je suis perdu\(e\)/ })).toBeInTheDocument();
     expect(document.documentElement.dir).toBe("ltr");

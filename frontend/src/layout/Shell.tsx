@@ -20,9 +20,11 @@ export function Shell() {
   const { source, me, fallbackReason, signedOut } = useSession();
   const canManage = useCan("staff:manage");
   const canHealth = useCan("health:read");
+  const canBookings = useCan("booking:read");
   const nav = [
     ...NAV.slice(0, 5),
     ...(canHealth ? [{ to: "/health", label: "Health", end: false }] : []),
+    ...(canBookings ? [{ to: "/bookings", label: "Bookings", end: false }] : []),
     ...NAV.slice(5),
     ...(canManage ? [{ to: "/staff", label: "Staff", end: false }] : []),
   ];

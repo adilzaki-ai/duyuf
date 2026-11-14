@@ -1,4 +1,7 @@
 import type { RafeeqLang } from "./help";
+import { ROOM_WORDS } from "./wordsRooms";
+import { STAY_WORDS } from "./wordsStay";
+import { TRIP_WORDS } from "./wordsTrips";
 
 /**
  * Every line Rafeeq shows a pilgrim, in its six languages. English is the key,
@@ -12,6 +15,9 @@ import type { RafeeqLang } from "./help";
 type Others = Record<Exclude<RafeeqLang, "en">, string>;
 
 export const WORDS: Record<string, Others> = {
+  ...TRIP_WORDS,
+  ...STAY_WORDS,
+  ...ROOM_WORDS,
   Rafeeq: { ar: "رفيق", id: "Rafeeq", ur: "رفیق", tr: "Rafeeq", fr: "Rafeeq" },
   "Assalamu alaikum, {name}": {
     ar: "السلام عليكم يا {name}",

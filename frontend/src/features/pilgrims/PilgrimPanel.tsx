@@ -7,6 +7,7 @@ import { useCan } from "../../app/SessionContext";
 import { Failed, Loading, StatusChip, u } from "../../design/ui";
 import { needLabel, statusLabel } from "../../domain/labels";
 import { countryName, fmtDate, fmtDateTime, languageName, t } from "../../i18n";
+import { visaState } from "../../rafeeq/visaDays";
 import p from "./pilgrims.module.css";
 
 /** One pilgrim: who they are, the journey so far, and the next steps allowed. */
@@ -97,6 +98,12 @@ export function PilgrimPanel({ id, onClose }: { id: string; onClose: () => void 
               <span>{q.data.date_of_birth ? fmtDate(q.data.date_of_birth) : <i className={u.muted}>{t("Hidden for your role")}</i>}</span>
             </li>
             <li>
+              <span>{t("Visa ends")}</span>
+              <span>
+                <VisaLeft on={q.data.visa_expires_on ?? null} />
+              </span>
+            </li>
+            <li>
               <span>{t("Gender")}</span>
               <span>{t(q.data.gender === "male" ? "Male" : "Female")}</span>
             </li>
@@ -162,5 +169,17 @@ export function PilgrimPanel({ id, onClose }: { id: string; onClose: () => void 
         </>
       )}
     </aside>
+  );
+}
+
+/** The visa's last day and the days left, in red when three or fewer (rafeeq/visa.ts has the levels). */
+function VisaLeft({ on }: { on: string | null }) {
+  if (!on) return <i className={u.muted}>{t("Not entered")}</i>;
+  const v = visaState(on, null);
+  const left = v.level === "ended" ? t("Ended") : v.days === 0 ? t("Ends today") : t("{n} days left", { n: v.days ?? 0 });
+  return (
+    <>
+      {fmtDate(on)} · <span className={v.level === "ended" || v.level === "urgent" ? u.error : undefined}>{left}</span>
+    </>
   );
 }

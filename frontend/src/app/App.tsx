@@ -14,6 +14,8 @@ import { AnalystPage } from "../features/analyst/AnalystPage";
 import { ArrivalsPage } from "../features/arrivals/ArrivalsPage";
 import { FlightPage } from "../features/arrivals/FlightPage";
 import { ResourcesPage } from "../features/arrivals/ResourcesPage";
+import { BookingsPage } from "../features/bookings/BookingsPage";
+import { Cover, coverFirst, coverSeen } from "../features/cover/Cover";
 import { GroupPage } from "../features/groups/GroupPage";
 import { GroupsPage } from "../features/groups/GroupsPage";
 import { HealthPage } from "../features/health/HealthPage";
@@ -35,6 +37,7 @@ const Router = HASH_ROUTES ? HashRouter : BrowserRouter;
 export function App({ start = startDataSource }: { start?: Start }) {
   const [started, setStarted] = useState<StartedSource | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [showCover, setShowCover] = useState(coverFirst);
   /* the platform said the session is over (it expired, or an administrator switched it off) */
   const ended = useRef<() => void>(() => {});
   const [queryClient] = useState(() => {
@@ -99,6 +102,7 @@ export function App({ start = startDataSource }: { start?: Start }) {
                 <Route path="pilgrims" element={<PilgrimsPage />} />
                 <Route path="incidents" element={<IncidentsPage />} />
                 <Route path="health" element={<HealthPage />} />
+                <Route path="bookings" element={<BookingsPage />} />
                 <Route path="analyst" element={<AnalystPage />} />
                 <Route path="staff" element={<StaffPage />} />
                 <Route path="account" element={<AccountPage />} />
@@ -110,5 +114,15 @@ export function App({ start = startDataSource }: { start?: Start }) {
       </QueryClientProvider>
     );
   }
+  if (showCover)
+    body = (
+      <Cover
+        state={failure ? "failed" : !started ? "loading" : started.source.kind === "mock" ? "sample" : "live"}
+        onEnter={() => {
+          coverSeen();
+          setShowCover(false);
+        }}
+      />
+    );
   return <LangProvider>{body}</LangProvider>;
 }

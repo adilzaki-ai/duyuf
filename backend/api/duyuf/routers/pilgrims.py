@@ -22,7 +22,7 @@ NEEDS = ("wheelchair", "medical", "elderly", "dietary", "unaccompanied_minor")
 
 _COLS = """p.id::text, p.group_id::text, g.code AS group_code, g.name AS group_name,
            p.full_name, p.full_name_ar, p.gender, p.date_of_birth, p.nationality,
-           p.passport_no, p.phone, p.language, p.status, p.needs, p.updated_at,
+           p.passport_no, p.phone, p.language, p.status, p.needs, p.updated_at, p.visa_expires_on,
            p.arrival_flight_id::text, fl.number AS flight_number"""
 _FROM = """pilgrim p JOIN pilgrim_group g ON g.id = p.group_id
            LEFT JOIN flight fl ON fl.id = p.arrival_flight_id"""
@@ -50,6 +50,8 @@ class PilgrimIn(BaseModel):
     phone: str | None = None
     language: str | None = Field(default=None, pattern=_LANGUAGE)
     needs: list[Literal[NEEDS]] = []  # type: ignore[valid-type]
+    # as printed on the visa; Rafeeq counts the days left
+    visa_expires_on: date | None = None
 
 
 class PilgrimPatch(BaseModel):
@@ -62,6 +64,7 @@ class PilgrimPatch(BaseModel):
     # on is POST /v1/flights/{id}/pilgrims, which checks they have not landed.
     arrival_flight_id: None = None
     needs: list[Literal[NEEDS]] | None = None  # type: ignore[valid-type]
+    visa_expires_on: date | None = None
 
 
 class StatusMove(BaseModel):
@@ -131,9 +134,9 @@ def create_pilgrim(body: PilgrimIn, who: Identity = Depends(require("pilgrim:wri
     with tenant_session(who.tenant_id) as conn:
         pid = conn.execute(
             """INSERT INTO pilgrim (group_id, full_name, full_name_ar, gender, date_of_birth,
-                   nationality, passport_no, phone, language, needs)
+                   nationality, passport_no, phone, language, needs, visa_expires_on)
                VALUES (%(group_id)s, %(full_name)s, %(full_name_ar)s, %(gender)s, %(date_of_birth)s,
-                   %(nationality)s, upper(%(passport_no)s), %(phone)s, %(language)s, %(needs)s)
+                   %(nationality)s, upper(%(passport_no)s), %(phone)s, %(language)s, %(needs)s, %(visa_expires_on)s)
                RETURNING id::text""", body.model_dump()).fetchone()["id"]
         conn.execute("INSERT INTO pilgrim_event (pilgrim_id, to_status, actor) VALUES (%s, 'registered', %s)",
                      (pid, who.display_name))

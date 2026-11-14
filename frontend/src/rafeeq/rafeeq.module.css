@@ -1733,3 +1733,1702 @@ a.big {
   font-family: "IBM Plex Sans Arabic", system-ui, sans-serif;
   font-weight: 600;
 }
+
+/* =====================================================================
+ * Visit the sites, the daily weather and the visa window
+ * ===================================================================== */
+
+/* ---- shared: a two-way switch (Makkah / Madinah), chips ---- */
+
+.seg,
+.segSmall {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--rq-mist);
+}
+
+.segSmall {
+  padding: 3px;
+  border-radius: 12px;
+}
+
+.seg button,
+.segSmall button {
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--rq-deep);
+  cursor: pointer;
+}
+
+.segSmall button {
+  min-height: 40px;
+  font-size: 15px;
+}
+
+.seg button[aria-pressed="true"],
+.segSmall button[aria-pressed="true"] {
+  background: var(--rq-card);
+  color: var(--rq-ink);
+  box-shadow: var(--rq-shadow);
+}
+
+.select {
+  font: inherit;
+  font-size: 16px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--rq-card);
+  color: var(--rq-ink);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--rq-mist);
+  color: var(--rq-deep);
+}
+
+.chipCool {
+  background: #dff1ff;
+  color: #0b4f7c;
+}
+
+.chipSun {
+  background: var(--rq-gold-soft);
+  color: #7a4a00;
+}
+
+@media (prefers-color-scheme: dark) {
+  .chip,
+  .seg,
+  .segSmall {
+    background: #12302e;
+    color: #bff3ee;
+  }
+  .seg button,
+  .segSmall button {
+    color: #bff3ee;
+  }
+  .chipCool {
+    background: #12324a;
+    color: #cbe8ff;
+  }
+  .chipSun {
+    color: #ffd99a;
+  }
+}
+
+.go {
+  text-decoration: none;
+  min-height: 56px;
+  font-size: 18px;
+  background: var(--rq-deep);
+  color: #fff;
+}
+
+.plainBig {
+  background: var(--rq-card);
+  color: var(--rq-ink);
+  border: 2px solid var(--rq-emerald);
+  min-height: 64px;
+  font-size: 20px;
+}
+
+/* ---- the home buttons ---- */
+
+.tripsHome {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 16px;
+  padding-inline: 20px;
+  text-align: start;
+  min-height: 92px;
+  /* turquoise, a lighter one than Ask Rafeeq so the two read apart */
+  background: var(--rq-khatam), linear-gradient(135deg, #3fd3cb, #0e939a);
+  color: #fff;
+  box-shadow: 0 8px 22px rgb(14 147 154 / 0.32);
+}
+
+.tripsHome .tileIcon {
+  color: #fff;
+}
+
+.tripsHome .tileIcon svg path:first-child {
+  fill: rgb(255 255 255 / 0.95);
+}
+
+/* ---- the visa window ---- */
+
+.visa {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+  border-inline-start: 6px solid var(--visa-tone, var(--rq-emerald));
+}
+
+.visaNone {
+  display: block;
+  --visa-tone: var(--line);
+}
+
+.visaOk {
+  --visa-tone: #0a7f8a;
+}
+.visaSoon {
+  --visa-tone: #d98a0b;
+}
+.visaUrgent {
+  --visa-tone: #c62828;
+}
+.visaEnded {
+  --visa-tone: #8e1b14;
+  background: #fdecea;
+}
+
+@media (prefers-color-scheme: dark) {
+  .visaEnded {
+    background: #3a1714;
+  }
+}
+
+.visaRing {
+  flex: none;
+  width: 84px;
+  height: 84px;
+}
+
+.visaTrack {
+  fill: none;
+  stroke: var(--rq-mist);
+  stroke-width: 8;
+}
+
+.visaArc {
+  fill: none;
+  stroke: var(--visa-tone);
+  stroke-width: 8;
+  stroke-linecap: round;
+}
+
+.visaNumber {
+  font-size: 24px;
+  font-weight: 700;
+  fill: var(--rq-ink);
+  font-family: system-ui, sans-serif;
+}
+
+.visaWords {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.visaWords p {
+  margin: 0;
+}
+
+.visaTitle {
+  font-size: 15px;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+.visaTitle b {
+  color: var(--visa-tone);
+  font-size: 18px;
+}
+
+.visaDate {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.visaLine {
+  font-size: 15px;
+}
+
+.visaWarn {
+  margin-top: 4px !important;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--rq-gold-soft);
+  font-size: 15px;
+}
+
+/* ---- the weather ---- */
+
+.sky {
+  width: 30px;
+  height: 30px;
+}
+
+.wxCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 18px;
+  font: inherit;
+  text-align: start;
+  color: var(--rq-ink);
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+  cursor: pointer;
+  border-inline-start: 6px solid var(--wx-tone, var(--rq-emerald));
+}
+
+.wxCardIcon {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--wx-soft, var(--rq-mist));
+}
+
+.wxCardIcon .sky {
+  width: 40px;
+  height: 40px;
+}
+
+.wxCardWords {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.wxCardWords small {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.wxCardWords b {
+  font-size: 20px;
+}
+
+.wxBest {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--rq-emerald);
+}
+
+.wxUpdated {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.wxCool {
+  --wx-tone: #0a7f8a;
+  --wx-soft: #d8f4f2;
+}
+.wxWarm {
+  --wx-tone: #e0a21f;
+  --wx-soft: #fff3cd;
+}
+.wxHot {
+  --wx-tone: #e07a1f;
+  --wx-soft: #ffe4c7;
+}
+.wxBad {
+  --wx-tone: #c62828;
+  --wx-soft: #fde0dc;
+}
+
+@media (prefers-color-scheme: dark) {
+  .wxCool {
+    --wx-soft: #12302e;
+  }
+  .wxWarm {
+    --wx-soft: #3b2f17;
+  }
+  .wxHot {
+    --wx-soft: #3d2612;
+  }
+  .wxBad {
+    --wx-soft: #3a1714;
+  }
+}
+
+.wx,
+.trips,
+.siteDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wx h2,
+.trips h2,
+.siteDetail h2 {
+  margin: 0;
+}
+
+.wxNow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+  border-inline-start: 6px solid var(--wx-tone);
+}
+
+.wxNow > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.wxNowIcon {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  background: var(--wx-soft);
+}
+
+.wxNowIcon .sky {
+  width: 54px;
+  height: 54px;
+}
+
+.wxTemp {
+  font-size: 44px;
+  line-height: 1;
+}
+
+.wxNowLine {
+  font-size: 16px;
+  color: var(--ink-2);
+}
+
+.wxFacts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.wxFacts li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+}
+
+.wxFacts small {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.wxBestBig {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--rq-mist);
+  color: var(--rq-deep);
+  font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+  .wxBestBig {
+    background: #12302e;
+    color: #bff3ee;
+  }
+}
+
+.wxHead {
+  margin: 6px 0 0;
+  font-size: 18px;
+}
+
+.wxHours {
+  list-style: none;
+  margin: 0;
+  padding: 2px 2px 8px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+.wxHours li {
+  flex: none;
+  width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px;
+  border-radius: 14px;
+  background: var(--wx-soft);
+  scroll-snap-align: start;
+}
+
+.wxHours small {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.wxDays {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+}
+
+.wxDays li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+}
+
+.wxDays li + li {
+  border-top: 1px solid var(--line);
+}
+
+.wxDayName {
+  font-weight: 600;
+}
+
+.wxDayWord {
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+/* ---- visit the sites ---- */
+
+.planner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+}
+
+.planner h3 {
+  margin: 0;
+}
+
+.plannerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.siteList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.siteCard {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+}
+
+.siteOpen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  background: none;
+  cursor: pointer;
+}
+
+.sitePhoto {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--rq-mist);
+}
+
+.photoNone {
+  display: block;
+  background: var(--rq-khatam), linear-gradient(135deg, #17b3b9, var(--rq-deep));
+}
+
+.siteWords {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 14px;
+}
+
+.siteWords b {
+  font-size: 19px;
+}
+
+.siteWords > span:not(.chips) {
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+.pick {
+  position: absolute;
+  inset-block-start: 10px;
+  inset-inline-end: 10px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  font: inherit;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  background: rgb(7 95 105 / 0.85);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
+}
+
+.pick[aria-pressed="true"] {
+  background: var(--rq-gold);
+}
+
+.hero2 {
+  margin: 0 -16px;
+  position: relative;
+}
+
+.heroPhoto {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--rq-mist);
+}
+
+.credit {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding: 14px 10px 5px;
+  font-size: 11px;
+  color: #fff;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.55));
+  text-align: right;
+}
+
+.credit a {
+  color: #fff;
+}
+
+.arabicName {
+  margin: -8px 0 0;
+  font-family: "Reem Kufi", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  font-size: 20px;
+  color: var(--rq-gold);
+}
+
+.siteDetail h3 {
+  margin: 4px 0 0;
+  font-size: 18px;
+}
+
+.siteDetail p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.siteDetail .advice {
+  margin: 0;
+}
+
+/* ---- the plan ---- */
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.planHead {
+  margin: 0;
+  font-size: 18px;
+}
+
+.planDay {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.planDay h3 {
+  margin: 6px 0 0;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.stop {
+  position: relative;
+  padding-inline-start: 22px;
+  border-inline-start: 3px dotted var(--rq-aqua);
+  margin-inline-start: 8px;
+  padding-bottom: 10px;
+}
+
+.stop::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -9px;
+  top: 34px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--rq-emerald);
+  border: 3px solid var(--rq-sand);
+}
+
+.stopDone::before {
+  background: var(--rq-gold);
+}
+
+.stopDone .stopMain b {
+  text-decoration: line-through;
+  text-decoration-color: var(--rq-gold);
+}
+
+.leg {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.stopRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stopTime {
+  flex: none;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--rq-emerald);
+  min-width: 48px;
+}
+
+.stopMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 0;
+  border-radius: 14px;
+  font: inherit;
+  text-align: start;
+  color: inherit;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+  cursor: pointer;
+}
+
+.stopMain > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stopMain small {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.stopPhoto {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.stopActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  padding-inline-start: 58px;
+}
+
+.stopActions .plain {
+  padding: 8px 12px;
+  font-size: 15px;
+  text-decoration: none;
+}
+
+.stopActions .plain[aria-pressed="true"] {
+  border-color: var(--rq-gold);
+  color: #7a4a00;
+}
+
+/* =====================================================================
+ * Going home, food and hotels, bookings
+ * ===================================================================== */
+
+/* ---- the reminder at the top of the page ---- */
+
+.remind {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--rq-mist);
+  color: var(--rq-deep);
+  box-shadow: var(--rq-shadow);
+}
+
+.remind ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.remindIcon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--rq-emerald);
+  color: #fff;
+}
+
+.remindIcon svg {
+  width: 24px;
+  height: 24px;
+}
+
+[dir="rtl"] .remindIcon svg {
+  transform: scaleX(-1);
+}
+
+.remindSoon {
+  background: var(--rq-gold-soft);
+  color: #6b4100;
+}
+
+.remindSoon .remindIcon {
+  background: #d98a0b;
+}
+
+.remindToday {
+  background: #fde0dc;
+  color: #7a1712;
+}
+
+.remindToday .remindIcon {
+  background: #c62828;
+}
+
+@media (prefers-color-scheme: dark) {
+  .remind {
+    background: #12302e;
+    color: #bff3ee;
+  }
+  .remindSoon {
+    background: #3b2f17;
+    color: #ffd99a;
+  }
+  .remindToday {
+    background: #3a1714;
+    color: #ffc9c2;
+  }
+}
+
+/* ---- the visa window and the flights home, side by side when there is room ---- */
+
+.goingHome {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 480px) {
+  .goingHome {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+  .goingHome .visa {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.flights {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+  border-inline-start: 6px solid var(--rq-aqua);
+}
+
+.flights p {
+  margin: 0;
+}
+
+.legs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leg2 {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.leg2 + .leg2 {
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.legRoute {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 52px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--rq-mist);
+  color: var(--rq-deep);
+  font-family: ui-monospace, "JetBrains Mono", monospace;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.legRoute i {
+  font-style: normal;
+  transform: rotate(90deg);
+  font-size: 13px;
+}
+
+.legWords {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.legFlight {
+  font-weight: 700;
+  color: var(--rq-emerald);
+}
+
+/* ---- the home button ---- */
+
+.stayHome {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 16px;
+  padding-inline: 20px;
+  text-align: start;
+  min-height: 92px;
+  background: linear-gradient(135deg, #6b5bd2, #3e2f8f);
+  color: #fff;
+  box-shadow: 0 8px 22px rgb(62 47 143 / 0.3);
+}
+
+.stayHome .tileIcon {
+  color: #fff;
+}
+
+/* ---- food and hotels ---- */
+
+.stay {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stay h2 {
+  margin: 0;
+}
+
+.done {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #e1f5e6;
+  color: #1b5e20;
+  font-weight: 500;
+}
+
+@media (prefers-color-scheme: dark) {
+  .done {
+    background: #173321;
+    color: #b9f0c4;
+  }
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.filter {
+  font: inherit;
+  font-size: 15px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--rq-card);
+  color: var(--rq-ink);
+  cursor: pointer;
+}
+
+.filter[aria-pressed="true"] {
+  background: var(--rq-emerald);
+  border-color: var(--rq-emerald);
+  color: #fff;
+}
+
+.filters .select {
+  margin-inline-start: auto;
+}
+
+.venueList,
+.bookingList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.venueCard {
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 16px;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+  cursor: pointer;
+}
+
+.venueTop {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+}
+
+.venueHead {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.venueIcon {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--rq-mist);
+  font-size: 24px;
+}
+
+.venueWords {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.venueWords > b {
+  font-size: 18px;
+}
+
+.stars {
+  color: #e8a33a;
+  letter-spacing: 1px;
+}
+
+.starsOff {
+  color: var(--line);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.rating b {
+  color: var(--rq-ink);
+}
+
+.rating {
+  color: #e8a33a;
+}
+
+.contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.contact .plain {
+  text-decoration: none;
+  flex: 1 1 auto;
+  text-align: center;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.field input,
+.field textarea {
+  font: inherit;
+  font-size: 18px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--rq-card);
+  color: var(--rq-ink);
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stepper button {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid var(--rq-emerald);
+  background: var(--rq-card);
+  color: var(--rq-emerald);
+  font: inherit;
+  font-size: 26px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stepper button:disabled {
+  opacity: 0.4;
+}
+
+.stepper b {
+  font-size: 24px;
+  min-width: 2ch;
+  text-align: center;
+}
+
+.booking {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+  border-inline-start: 6px solid var(--bk-tone, var(--line));
+}
+
+.booking p {
+  margin: 0;
+}
+
+.booking .plain {
+  text-decoration: none;
+  text-align: center;
+}
+
+.bookingHead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.bookingStatus {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--bk-tone, var(--ink-2));
+}
+
+.bk_requested {
+  --bk-tone: #5f7c80;
+}
+.bk_awaiting_payment {
+  --bk-tone: #d98a0b;
+}
+.bk_confirmed {
+  --bk-tone: #2e7d32;
+}
+.bk_declined,
+.bk_cancelled {
+  --bk-tone: #9e9e9e;
+  opacity: 0.85;
+}
+
+.staffNote {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--rq-mist);
+}
+
+@media (prefers-color-scheme: dark) {
+  .staffNote {
+    background: #12302e;
+  }
+}
+
+.paid {
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+.payBox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+}
+
+.payAmount {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--rq-emerald);
+}
+
+/* ---- hotel rooms and accessibility ---- */
+
+.options {
+  margin: 0;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.options legend {
+  float: inline-start;
+  width: 100%;
+  padding: 0;
+  margin-bottom: 4px;
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.roomGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.roomCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  border-radius: 14px;
+  border: 2px solid var(--line);
+  background: var(--rq-card);
+  color: var(--rq-ink);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.roomCard b {
+  font-size: 16px;
+}
+
+.roomCard small {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.roomCard[aria-pressed="true"] {
+  border-color: var(--rq-emerald);
+  background: var(--rq-mist);
+  box-shadow: 0 0 0 2px var(--rq-emerald) inset;
+}
+
+@media (prefers-color-scheme: dark) {
+  .roomCard[aria-pressed="true"] {
+    background: #12302e;
+  }
+}
+
+.bedsPic {
+  width: 64px;
+  height: 28px;
+  color: var(--rq-emerald);
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 0;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.check + .check {
+  border-top: 1px solid var(--line);
+}
+
+.check input {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  accent-color: var(--rq-emerald);
+}
+
+.check span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.check small {
+  font-size: 13px;
+}
+
+.has {
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+.has::before {
+  content: "✓ ";
+}
+
+.linkButton {
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--rq-deep);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.needs {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #e3effd;
+  color: #0d3c78;
+}
+
+@media (prefers-color-scheme: dark) {
+  .needs {
+    background: #13294a;
+    color: #cfe3ff;
+  }
+}
+
+.venueFacts {
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: var(--rq-card);
+  box-shadow: var(--rq-shadow);
+}
+
+.venueFacts h3 {
+  margin: 4px 0;
+  font-size: 16px;
+}
+
+.venueFacts p {
+  margin: 0 0 8px;
+}
+
+.accessList {
+  margin: 0;
+  padding-inline-start: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.accessList li::before {
+  content: "✓ ";
+  color: #2e7d32;
+  font-weight: 700;
+}
+
+.wcBadge {
+  display: inline-grid;
+  place-items: center;
+  margin-inline-start: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #1565c0;
+  color: #fff;
+  font-size: 15px;
+  vertical-align: middle;
+}
+
+.stayHome .tileIcon {
+  width: 64px;
+}
+
+.stayHome .tileIcon svg {
+  width: 46px;
+}
+
+/* ---- the SOS button's pictures: an ambulance, and a crescent with a heartbeat ---- */
+
+.sosHome .sosWords {
+  flex: 1;
+  min-width: 0;
+}
+
+.sosHome .sosWords b {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sosCrescent {
+  display: inline-grid;
+  width: 38px;
+  height: 34px;
+  color: #fff;
+}
+
+.sosCrescent svg {
+  width: 38px;
+  height: 34px;
+}
+
+.sosAmbulance {
+  flex: none;
+  width: 84px;
+  margin-inline-start: auto;
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 0.25));
+}
+
+.sosAmbulance svg {
+  display: block;
+  width: 84px;
+  height: auto;
+}
+
+/* the ambulance drives toward the words in either direction */
+[dir="rtl"] .sosAmbulance svg {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] .sosAmbulance svg text {
+  transform: scaleX(-1);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (max-width: 360px) {
+  .sosAmbulance,
+  .sosAmbulance svg {
+    width: 64px;
+  }
+}
+
+/* ---- photos of places ---- */
+
+.venueCard {
+  padding: 0;
+  overflow: hidden;
+}
+
+.venueCard .venueHead {
+  padding: 12px 14px;
+}
+
+.cardPhoto {
+  position: relative;
+  display: block;
+}
+
+.cardPhoto img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--rq-mist);
+}
+
+.exampleTag {
+  position: absolute;
+  inset-block-end: 8px;
+  inset-inline-start: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: rgb(0 0 0 / 0.55);
+}
+
+.gallery {
+  position: relative;
+  margin: 0 -16px;
+}
+
+.galleryTrack {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.galleryTrack::-webkit-scrollbar {
+  display: none;
+}
+
+.galleryTrack img {
+  flex: none;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  scroll-snap-align: start;
+  background: var(--rq-mist);
+}
+
+.galleryCount {
+  position: absolute;
+  inset-block-start: 10px;
+  inset-inline-end: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: rgb(0 0 0 / 0.5);
+}
+
+.roomPhoto {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 4px;
+}
+
+/* ---- SOS: alert my group, or call the ambulance ---- */
+
+.sosPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #d0392f, #9f1f17);
+  color: #fff;
+  box-shadow: 0 8px 22px rgb(179 38 30 / 0.35);
+}
+
+.sosTitle {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.sosTitle b {
+  font-size: 30px;
+  letter-spacing: 0.04em;
+}
+
+.sosTwo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sosGroup,
+.sosAmb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 168px;
+  padding: 12px 8px;
+  border-radius: 16px;
+  font: inherit;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.sosGroup {
+  border: 2px solid rgb(255 255 255 / 0.55);
+  background: rgb(255 255 255 / 0.12);
+  color: #fff;
+}
+
+.sosAmb {
+  border: 0;
+  background: #fff;
+  color: #b3261e;
+}
+
+.sosGroup b,
+.sosAmb b {
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.sosGroup small,
+.sosAmb small {
+  font-size: 13px;
+  line-height: 1.3;
+  opacity: 0.92;
+}
+
+.sosAmb small {
+  color: #5d1712;
+}
+
+.sosAmbNumber {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+.sosGroup .sosRing {
+  width: 58px;
+  height: 58px;
+}
+
+.sosAmb .sosAmbulance,
+.sosAmb .sosAmbulance svg {
+  width: 82px;
+  margin: 0;
+  filter: none;
+}
+
+.sosGroup:focus-visible,
+.sosAmb:focus-visible {
+  outline: 3px solid #ffd27a;
+  outline-offset: 2px;
+}
+
+@media (max-width: 340px) {
+  .sosTwo {
+    grid-template-columns: 1fr;
+  }
+}

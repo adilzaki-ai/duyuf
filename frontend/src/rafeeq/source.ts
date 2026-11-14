@@ -3,6 +3,8 @@ import { config, resolvedDataSource, type AppConfig } from "../config/env";
 import type { IncidentStatus } from "../domain/incidents";
 import type { HelpKind, RafeeqLang } from "./help";
 import type { Assessment, Reason } from "./vitals";
+import type { Access, Bed, Extra, RoomType } from "./rooms";
+import type { WeatherReport } from "./weatherRules";
 
 export interface RafeeqCall {
   id: string;
@@ -45,6 +47,104 @@ export interface RafeeqPage {
   group_now: { lat: number; lon: number; count: number; at: string } | null;
   /** their last readings, newest first, for the health rows' details */
   recent: { at: string; heart_rate: number | null; temperature: number | null }[];
+  /** where they are in the journey: in_makkah / in_madinah pick the city for weather and trips */
+  status?: string;
+  /** the last day of their visa, as staff entered it; null when not on file */
+  visa_expires_on?: string | null;
+  /** the day their group is planned to leave */
+  leaving_on?: string | null;
+  /** their group's flights home, in the order they fly */
+  return_legs?: ReturnLeg[];
+}
+
+export interface ReturnLeg {
+  seq: number;
+  flight_number: string;
+  from_airport: string;
+  to_airport: string;
+  departs_at: string;
+  arrives_at: string | null;
+}
+
+export type VenueKind = "hotel" | "restaurant" | "attraction";
+
+/** A place the operator offers: to stay, to eat, or to visit. Ratings always name their source. */
+export interface Venue {
+  id: string;
+  kind: VenueKind;
+  city: "makkah" | "madinah";
+  name: string;
+  name_ar: string | null;
+  stars: number | null;
+  /** 1 simple, 2 casual, 3 fine, 4 upscale */
+  price_level: number | null;
+  cuisine: string | null;
+  rating: number | null;
+  rating_count: number | null;
+  rating_source: string | null;
+  site_id: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  website: string | null;
+  address: string | null;
+  lat: number | null;
+  lon: number | null;
+  /** SAR: a night (hotel), a person (restaurant, attraction) */
+  price_from: number | null;
+  bookable: boolean;
+  /** hotels: the room types it has (empty: not said) and the accessibility it offers */
+  room_types?: RoomType[];
+  accessibility?: Access[];
+  /** links to the place's own photos; none: the page shows example photos */
+  photos?: string[];
+}
+
+export type BookingStatus = "requested" | "awaiting_payment" | "confirmed" | "declined" | "cancelled";
+
+export interface Booking {
+  id: string;
+  ref: number;
+  venue: { id: string; kind: VenueKind; city: "makkah" | "madinah"; name: string; name_ar: string | null; phone: string | null; site_id: string | null };
+  for_date: string;
+  at_time: string | null;
+  nights: number | null;
+  people: number;
+  note: string | null;
+  rooms?: number | null;
+  room_type?: RoomType | null;
+  bed?: Bed | null;
+  access_needs?: Access[];
+  extras?: Extra[];
+  status: BookingStatus;
+  amount: number | null;
+  currency: string;
+  pay_at: "online" | "venue" | null;
+  payment_status: "none" | "paid" | "refund_due" | "refunded";
+  payment_ref: string | null;
+  staff_note: string | null;
+  requested_at: string;
+  updated_at: string;
+}
+
+/** How this operator's pilgrims can pay online: "sandbox" is a test payment; null is not at all. */
+export interface Payments {
+  online: "sandbox" | string | null;
+}
+
+export interface NewBooking {
+  venue_id: string;
+  for_date: string;
+  at_time?: string | null;
+  nights?: number | null;
+  people: number;
+  note?: string | null;
+  /* hotels */
+  rooms?: number | null;
+  room_type?: RoomType | null;
+  bed?: Bed | null;
+  access_needs?: Access[];
+  extras?: Extra[];
 }
 
 export interface RafeeqAlert {
@@ -90,6 +190,17 @@ export interface RafeeqSource {
   iAmOk(alertId: string): Promise<RafeeqPage>;
   /** A question by voice or text; an answer in their language and one suggested button. */
   ask(question: string, language: RafeeqLang, history: { question: string; answer: string }[]): Promise<AskAnswer>;
+  /** Makkah and Madinah: now, the next hours, four days, and the good hours to walk. */
+  weather(): Promise<WeatherReport>;
+  /** The places the operator offers, and whether they can pay online. */
+  venues(kind?: VenueKind, city?: "makkah" | "madinah"): Promise<{ venues: Venue[]; payments: Payments }>;
+  bookings(): Promise<{ bookings: Booking[]; payments: Payments }>;
+  /** A request: staff check with the place and answer on the page. */
+  book(b: NewBooking): Promise<{ booking: string; bookings: Booking[]; payments: Payments }>;
+  /** Until it is confirmed; after that, the group leader cancels. */
+  cancelBooking(id: string): Promise<{ bookings: Booking[]; payments: Payments }>;
+  /** A booking waiting for payment. The test payment takes the test card's number. */
+  pay(id: string, cardNumber: string): Promise<{ bookings: Booking[]; payments: Payments }>;
 }
 
 /** The platform, with the card's secret in place of a key. */
@@ -135,6 +246,35 @@ export class PlatformRafeeq implements RafeeqSource {
 
   ask(question: string, language: RafeeqLang, history: { question: string; answer: string }[]) {
     return this.http.post<AskAnswer>("/v1/rafeeq/ask", { question, language, history }, 40_000);
+  }
+
+  weather() {
+    return this.http.get<WeatherReport>("/v1/rafeeq/weather");
+  }
+
+  venues(kind?: VenueKind, city?: "makkah" | "madinah") {
+    const q = new URLSearchParams();
+    if (kind) q.set("kind", kind);
+    if (city) q.set("city", city);
+    return this.http.get<{ venues: Venue[]; payments: Payments }>(`/v1/rafeeq/venues${q.size ? `?${q}` : ""}`);
+  }
+
+  bookings() {
+    return this.http.get<{ bookings: Booking[]; payments: Payments }>("/v1/rafeeq/bookings");
+  }
+
+  book(b: NewBooking) {
+    return this.http.post<{ booking: string; bookings: Booking[]; payments: Payments }>("/v1/rafeeq/bookings", b);
+  }
+
+  cancelBooking(id: string) {
+    return this.http.post<{ bookings: Booking[]; payments: Payments }>(`/v1/rafeeq/bookings/${encodeURIComponent(id)}/cancel`);
+  }
+
+  pay(id: string, cardNumber: string) {
+    return this.http.post<{ bookings: Booking[]; payments: Payments }>(`/v1/rafeeq/bookings/${encodeURIComponent(id)}/pay`, {
+      card_number: cardNumber,
+    });
   }
 }
 

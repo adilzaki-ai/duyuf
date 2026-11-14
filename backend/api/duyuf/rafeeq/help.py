@@ -18,6 +18,8 @@ HELP: dict[str, tuple[str, str]] = {
     "sos": ("urgent", "Pressed SOS on Rafeeq."),
     "lost": ("urgent", "Pressed “I am lost” on Rafeeq."),
     "heat": ("urgent", "Said on Rafeeq that they feel unwell in the heat."),
+    # pressed "Call ambulance 997": the phone dials 997 and the team is told, to go and meet them
+    "medical": ("urgent", "Called the ambulance (997) from Rafeeq. Go to them and meet the ambulance."),
 }
 
 # Who the history names for a step the pilgrim took on their page.
