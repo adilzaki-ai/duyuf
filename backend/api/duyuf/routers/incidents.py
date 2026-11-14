@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from ..core.auth import Identity, require
 from ..core.db import tenant_session
+from ..health import record
 from ..incidents.flow import KINDS, MOVES, PRIORITIES, refusal
 
 router = APIRouter(prefix="/v1/incidents", tags=["incidents"])
@@ -39,7 +40,7 @@ def _shown(row: dict) -> dict:
     return row
 
 
-def _one(conn, incident_id: str) -> dict:
+def _one(conn, incident_id: str, who: Identity) -> dict:
     row = conn.execute(f"SELECT {_COLS} FROM {_FROM} WHERE i.id = %s", (incident_id,)).fetchone()
     if not row:
         raise HTTPException(404, "no such incident")
@@ -47,6 +48,19 @@ def _one(conn, incident_id: str) -> dict:
     out["history"] = conn.execute(
         "SELECT kind, note, team, actor, at FROM incident_event WHERE incident_id = %s ORDER BY at, id",
         (incident_id,)).fetchall()
+    # Where to go: the pilgrim's latest place while the incident is open, if they share it.
+    out["live_location"] = None
+    if row["pilgrim_id"] and row["status"] != "resolved" and record.consent(conn, row["pilgrim_id"])["location"]:
+        out["live_location"] = record.last_place(conn, row["pilgrim_id"], fresh_only=True)
+    # The readings behind it, for medics and administrators only.
+    out["health"] = None
+    if row["pilgrim_id"] and who.can("health:read"):
+        alert = conn.execute(
+            """SELECT reasons, heart_rate, temperature::float AS temperature, started_at FROM health_alert
+                WHERE incident_id = %s""", (incident_id,)).fetchone()
+        agreed = record.consent(conn, row["pilgrim_id"])["health"]
+        if alert or agreed:
+            out["health"] = {"alert": alert, "now": record.state(conn, row["pilgrim_id"]) if agreed else None}
     return out
 
 
@@ -97,7 +111,7 @@ def list_incidents(
 @router.get("/{incident_id}")
 def get_incident(incident_id: str, who: Identity = Depends(require("incident:read"))):
     with tenant_session(who.tenant_id) as conn:
-        return _one(conn, incident_id)
+        return _one(conn, incident_id, who)
 
 
 class IncidentIn(BaseModel):
@@ -146,7 +160,7 @@ def raise_incident(body: IncidentIn, who: Identity = Depends(require("incident:w
              who.display_name)).fetchone()["id"]
         conn.execute("INSERT INTO incident_event (incident_id, kind, actor) VALUES (%s, 'opened', %s)",
                      (iid, who.display_name))
-        return _one(conn, iid)
+        return _one(conn, iid, who)
 
 
 def _locked(conn, incident_id: str, action: str) -> dict:
@@ -169,7 +183,7 @@ def assign(incident_id: str, body: Assign, who: Identity = Depends(require("inci
                      (team, incident_id))
         conn.execute("INSERT INTO incident_event (incident_id, kind, team, note, actor) VALUES (%s, 'assigned', %s, %s, %s)",
                      (incident_id, team, body.note, who.display_name))
-        return _one(conn, incident_id)
+        return _one(conn, incident_id, who)
 
 
 @router.post("/{incident_id}/resolve")
@@ -180,7 +194,7 @@ def resolve(incident_id: str, body: Resolve, who: Identity = Depends(require("in
                                updated_at = now() WHERE id = %s""", (body.resolution.strip(), incident_id))
         conn.execute("INSERT INTO incident_event (incident_id, kind, note, actor) VALUES (%s, 'resolved', %s, %s)",
                      (incident_id, body.resolution.strip(), who.display_name))
-        return _one(conn, incident_id)
+        return _one(conn, incident_id, who)
 
 
 @router.post("/{incident_id}/reopen")
@@ -191,7 +205,7 @@ def reopen(incident_id: str, body: Note, who: Identity = Depends(require("incide
                                updated_at = now() WHERE id = %s""", (incident_id,))
         conn.execute("INSERT INTO incident_event (incident_id, kind, note, actor) VALUES (%s, 'reopened', %s, %s)",
                      (incident_id, body.note, who.display_name))
-        return _one(conn, incident_id)
+        return _one(conn, incident_id, who)
 
 
 @router.post("/{incident_id}/notes")
@@ -202,4 +216,4 @@ def add_note(incident_id: str, body: Note, who: Identity = Depends(require("inci
             raise HTTPException(404, "no such incident")
         conn.execute("INSERT INTO incident_event (incident_id, kind, note, actor) VALUES (%s, 'note', %s, %s)",
                      (incident_id, body.note, who.display_name))
-        return _one(conn, incident_id)
+        return _one(conn, incident_id, who)

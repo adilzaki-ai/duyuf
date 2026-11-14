@@ -1,5 +1,5 @@
 import qrcode from "qrcode-generator";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { useGroupRafeeqCards, usePilgrim, useRafeeqCard, useRafeeqCardStep } from "../../api/queries";
 import { useCan } from "../../app/SessionContext";
 import { u } from "../../design/ui";
@@ -9,8 +9,10 @@ import { isRafeeqLang, isRtl, RAFEEQ_LANGUAGES, type RafeeqLang } from "../../ra
 import { say } from "../../rafeeq/words";
 import c from "./cards.module.css";
 
-/** The page a card opens. The secret goes after the #, which a browser never sends to a server. */
+/** The page a card opens. The secret goes after the #, which a browser never sends to a server.
+ * In the demo build the same page switches to Rafeeq when the # holds a card. */
 export function cardLink(token: string): string {
+  if (import.meta.env.VITE_ROUTER === "hash") return `${location.href.split("#")[0]}#${token}`;
   return `${location.origin}${import.meta.env.BASE_URL}r#${token}`;
 }
 
@@ -82,7 +84,20 @@ export function CardSheet({ cards }: { cards: IssuedCard[] }) {
             <button type="button" className={`${u.button} ${u.quiet}`} onClick={() => copy(one.token)}>
               {copied === one.token ? t("Copied") : t("Copy link")}
             </button>
-            <a className={`${u.button} ${u.quiet}`} href={cardLink(one.token)} target="_blank" rel="noreferrer">
+            <a
+              className={`${u.button} ${u.quiet}`}
+              href={cardLink(one.token)}
+              {...(import.meta.env.VITE_ROUTER === "hash"
+                ? {
+                    /* the demo: the staff app's own routing would take the # first, so load the page afresh as Rafeeq */
+                    onClick: (e: MouseEvent<HTMLAnchorElement>) => {
+                      e.preventDefault();
+                      location.assign(cardLink(one.token));
+                      location.reload();
+                    },
+                  }
+                : { target: "_blank", rel: "noreferrer" })}
+            >
               {t("Open page")}
             </a>
           </>

@@ -3,7 +3,10 @@
 A card is a link with a secret in it, printed as a QR code and handed to one
 pilgrim. It opens their page: their group leader's number, and three calls
 for help (SOS, lost, unwell in the heat) that land in the incident feed at
-once as urgent. The card reads nothing else and changes nothing else. Only
+once as urgent. With the pilgrim's consent it also carries their health
+readings and where they are (health/record.py); dangerous readings count
+down on the page and, unless they press "I am OK", raise a medical
+incident. The card reads nothing else and changes nothing else. Only
 its hash is kept, so a lost card is replaced, never shown again, and a new
 card stops the old one.
 
@@ -11,13 +14,17 @@ Safety help only: Rafeeq gives no religious rulings.
 """
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
+from ..arrivals.brief import KSA
 from ..core.auth import CardHolder, Identity, card_holder, hash_key, new_card_token, require
 from ..core.db import tenant_session
+from ..health import record
+from ..rafeeq import ask as ask_engine
 from ..rafeeq.help import (ACTOR, CALLS_PER_HOUR, FINE_NOTE, HELP, LANGUAGES, PRESSED_AGAIN,
                            description)
 
@@ -118,8 +125,10 @@ def _page(conn, card: CardHolder) -> dict:
     """What the page shows: who they are, who to call, and their calls for help still going
     (and those closed in the last 12 hours, so they see the answer)."""
     row = conn.execute(
-        """SELECT p.full_name, p.full_name_ar, g.code AS group_code, g.name AS group_name,
-                  g.leader_name, g.leader_phone, t.name AS operator, t.name_ar AS operator_ar
+        """SELECT p.full_name, p.full_name_ar, p.group_id::text AS gid, g.code AS group_code, g.name AS group_name,
+                  g.leader_name, g.leader_phone, t.name AS operator, t.name_ar AS operator_ar,
+                  CASE WHEN g.meeting_lat IS NOT NULL THEN
+                       jsonb_build_object('name', g.meeting_name, 'lat', g.meeting_lat, 'lon', g.meeting_lon) END AS meeting
              FROM pilgrim p JOIN pilgrim_group g ON g.id = p.group_id JOIN tenant t ON t.id = p.tenant_id
             WHERE p.id = %s""", (card.pilgrim_id,)).fetchone()
     calls = conn.execute(
@@ -127,7 +136,18 @@ def _page(conn, card: CardHolder) -> dict:
              WHERE pilgrim_id = %s AND rafeeq_card_id IS NOT NULL
                AND (status <> 'resolved' OR resolved_at > now() - interval '12 hours')
              ORDER BY (status = 'resolved'), opened_at DESC LIMIT 5""", (card.pilgrim_id,)).fetchall()
-    return {**row, "language": card.language, "is_demo": card.is_demo, "calls": calls}
+    agreed = record.consent(conn, card.pilgrim_id)
+    place = record.last_place(conn, card.pilgrim_id) if agreed["location"] else None
+    group = record.group_centre(conn, row.pop("gid"), card.pilgrim_id)
+    recent = conn.execute(
+        """SELECT at, heart_rate, temperature::float AS temperature FROM vital_reading
+            WHERE pilgrim_id = %s AND at > now() - interval '2 hours' ORDER BY at DESC LIMIT 12""",
+        (card.pilgrim_id,)).fetchall() if agreed["health"] else []
+    return {**row, "group_now": group, "recent": recent,
+            "language": card.language, "is_demo": card.is_demo, "calls": calls, "consent": agreed,
+            "health": record.state(conn, card.pilgrim_id) if agreed["health"] else None,
+            "alert": record.counting(conn, card.pilgrim_id) if agreed["health"] else None,
+            "location_at": place["at"] if place else None}
 
 
 class HelpIn(BaseModel):
@@ -199,3 +219,157 @@ def say_fine(incident_id: str, card: CardHolder = Depends(card_holder)):
             conn.execute("INSERT INTO incident_event (incident_id, kind, note, actor) VALUES (%s, 'note', %s, %s)",
                          (incident_id, FINE_NOTE, ACTOR))
         return _page(conn, card)
+
+
+# ---- health and place, with consent ----
+
+class ConsentIn(BaseModel):
+    # leave one out to keep it as it is; false withdraws it and removes what was shared
+    health: bool | None = None
+    location: bool | None = None
+
+
+class ReadingIn(BaseModel):
+    at: datetime | None = None
+    heart_rate: int | None = Field(default=None, ge=20, le=250)
+    temperature: float | None = Field(default=None, ge=30, le=45)
+
+    @model_validator(mode="after")
+    def _something(self):
+        if self.heart_rate is None and self.temperature is None:
+            raise ValueError("a reading needs a heart rate or a temperature")
+        return self
+
+
+class ReadingsIn(BaseModel):
+    readings: list[ReadingIn] = Field(min_length=1, max_length=500)
+    # simulated: the demonstration's buttons; refused on a real operator
+    source: Literal["device", "simulated"] = "device"
+    device: str | None = Field(default=None, max_length=80)
+
+
+class PlaceIn(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    accuracy_m: float | None = Field(default=None, ge=0, le=100_000)
+    at: datetime | None = None
+    source: Literal["phone", "simulated"] = "phone"
+
+
+def _demo_only(card: CardHolder, source: str) -> None:
+    if source == "simulated" and not card.is_demo:
+        raise HTTPException(403, "simulated readings are for demonstration operators only")
+
+
+@router.post("/v1/rafeeq/consent")
+def give_consent(body: ConsentIn, card: CardHolder = Depends(card_holder)):
+    with tenant_session(card.tenant_id) as conn:
+        record.set_consent(conn, card.pilgrim_id, body.health, body.location)
+        return _page(conn, card)
+
+
+@router.post("/v1/rafeeq/readings")
+def send_readings(body: ReadingsIn, card: CardHolder = Depends(card_holder)):
+    """From a watch paired with this card, or the page itself. Dangerous readings start the countdown."""
+    _demo_only(card, body.source)
+    with tenant_session(card.tenant_id) as conn:
+        record.take_readings(conn, card.pilgrim_id, [r.model_dump() for r in body.readings], body.source, body.device)
+        return _page(conn, card)
+
+
+@router.post("/v1/rafeeq/water")
+def drank_water(card: CardHolder = Depends(card_holder)):
+    with tenant_session(card.tenant_id) as conn:
+        record.take_water(conn, card.pilgrim_id)
+        return _page(conn, card)
+
+
+@router.post("/v1/rafeeq/location", status_code=204)
+def send_place(body: PlaceIn, card: CardHolder = Depends(card_holder)):
+    """Where the phone is. Often, so it answers with nothing."""
+    _demo_only(card, body.source)
+    with tenant_session(card.tenant_id) as conn:
+        record.take_location(conn, card.pilgrim_id, body.lat, body.lon, body.accuracy_m, body.at, body.source)
+    return Response(status_code=204)
+
+
+@router.post("/v1/rafeeq/alert/{alert_id}/ok")
+def i_am_ok(alert_id: str, card: CardHolder = Depends(card_holder)):
+    """"I am OK": the countdown stops and nothing is sent."""
+    with tenant_session(card.tenant_id) as conn:
+        if not record.cancel(conn, card.pilgrim_id, alert_id):
+            raise HTTPException(409, "too late to stop it: help has already been called")
+        return _page(conn, card)
+
+
+# ---- Ask Rafeeq ----
+
+class Turn(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+    answer: str = Field(min_length=1, max_length=1200)
+
+
+class AskIn(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+    language: Literal[LANGUAGES]  # type: ignore[valid-type]
+    # the last few questions on this phone, so a follow-up makes sense
+    history: list[Turn] = Field(default=[], max_length=3)
+
+
+def situation(page: dict) -> dict:
+    """What Claude may know about this pilgrim: their own page, in words. No passport, no birth date,
+    no readings as numbers, nobody else."""
+    h = page.get("health")
+    return {
+        "saudi_time": datetime.now(KSA).strftime("%A %H:%M"),
+        "first_name": page["full_name"].split()[0],
+        "group": page["group_name"],
+        "group_leader": page["leader_name"],
+        "leader_phone_on_page": bool(page["leader_phone"]),
+        "meeting_point": (page.get("meeting") or {}).get("name"),
+        "where_most_of_the_group_is_known": bool(page.get("group_now")),
+        "shares_location": page["consent"]["location"],
+        "health": None if not h else {"overall": h["level"], "heart": h["heart"]["state"],
+                                      "temperature": h["temperature"]["state"], "heat": h["heat"],
+                                      "water": h["hydration"]},
+        "open_calls_for_help": [c["kind"] for c in page["calls"] if c["status"] != "resolved"],
+        "medical_countdown_running": bool(page.get("alert")),
+    }
+
+
+@router.post("/v1/rafeeq/ask")
+def ask_rafeeq(body: AskIn, card: CardHolder = Depends(card_holder)):
+    """A question by voice or text; an answer in the pilgrim's language and one suggested button."""
+    question = body.question.strip()
+    if not question:
+        raise HTTPException(422, "ask something first")
+    with tenant_session(card.tenant_id) as conn:
+        asked = conn.execute(
+            "SELECT count(*)::int AS n FROM rafeeq_question WHERE card_id = %s AND asked_at > now() - interval '1 hour'",
+            (card.card_id,)).fetchone()["n"]
+        if asked >= ask_engine.QUESTIONS_PER_HOUR:
+            raise HTTPException(429, "too many questions this hour; if you need help, press SOS or call your group leader")
+        page = _page(conn, card)
+    # The model is called outside the database session: a slow answer must not hold a connection.
+    import anthropic
+    try:
+        a = ask_engine.ask(question, body.language, situation(page),
+                           [t.model_dump() for t in body.history])
+    except ask_engine.NotConfigured as exc:
+        raise HTTPException(503, f"Ask Rafeeq is not set up on this server: {exc}")
+    except anthropic.AuthenticationError:
+        raise HTTPException(503, "Ask Rafeeq's API key was refused; check ANTHROPIC_API_KEY on the server")
+    except (anthropic.APIConnectionError, anthropic.APITimeoutError):
+        raise HTTPException(503, "Ask Rafeeq cannot be reached just now")
+    except anthropic.APIStatusError as exc:
+        raise HTTPException(502, f"Ask Rafeeq failed ({exc.status_code}); try again")
+    with tenant_session(card.tenant_id) as conn:
+        conn.execute(
+            """INSERT INTO rafeeq_question (pilgrim_id, card_id, language, question, outcome, answer, action, model,
+                                            input_tokens, output_tokens)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (card.pilgrim_id, card.card_id, body.language, question, a.outcome, a.answer, a.action, a.model,
+             a.input_tokens, a.output_tokens))
+        conn.execute("DELETE FROM rafeeq_question WHERE card_id = %s AND asked_at < now() - make_interval(days => %s)",
+                     (card.card_id, ask_engine.KEEP_DAYS))
+    return {"outcome": a.outcome, "answer": a.answer, "action": a.action}

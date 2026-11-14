@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { HELP_KINDS, RAFEEQ_LANGUAGES } from "../help";
+import { COVER_LINES } from "../Cover";
 import { RAFEEQ_TABLE_LINES } from "../RafeeqApp";
 import { WORDS } from "../words";
 
@@ -24,7 +25,7 @@ describe("Rafeeq's words", () => {
         .filter((f) => /\.tsx?$/.test(f))
         .map((f) => join(dir, f)),
     );
-    const used = new Set(RAFEEQ_TABLE_LINES);
+    const used = new Set([...RAFEEQ_TABLE_LINES, ...COVER_LINES]);
     for (const f of files) for (const m of readFileSync(f, "utf8").matchAll(/\b(?:say|s)\(\s*"([^"]+)"/g)) used.add(m[1]);
     const missing = [...used].filter((en) => !(en in WORDS));
     expect(missing).toEqual([]);

@@ -9,6 +9,7 @@ import type {
   Group,
   GroupChange,
   GroupCards,
+  HealthBoard,
   ImportResult,
   IncidentDetail,
   IncidentFilter,
@@ -30,6 +31,7 @@ import type {
   Pilgrim,
   PilgrimDetail,
   PilgrimFilter,
+  PilgrimHealth,
   RafeeqCardInfo,
 } from "../domain/types";
 import type { RafeeqLang } from "../rafeeq/help";
@@ -94,6 +96,9 @@ export interface DataSource {
   stopRafeeqCard(pilgrimId: string): Promise<void>;
   /** Cards for everyone still on the journey; with `replace`, those already handed out are replaced too. */
   issueGroupRafeeqCards(groupId: string, replace: boolean): Promise<GroupCards>;
+  /** Pilgrims sharing readings or their place, the most serious first. Medics and administrators. */
+  health(): Promise<HealthBoard>;
+  pilgrimHealth(pilgrimId: string): Promise<PilgrimHealth>;
   staff(): Promise<StaffMember[]>;
   addStaff(s: NewStaff): Promise<StaffMember>;
   updateStaff(id: string, change: StaffChange): Promise<StaffMember>;

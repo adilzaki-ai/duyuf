@@ -9,6 +9,7 @@ import type {
   Group,
   GroupChange,
   GroupCards,
+  HealthBoard,
   ImportResult,
   IncidentDetail,
   IncidentFilter,
@@ -30,6 +31,7 @@ import type {
   Pilgrim,
   PilgrimDetail,
   PilgrimFilter,
+  PilgrimHealth,
   RafeeqCardInfo,
 } from "../domain/types";
 import type { RafeeqLang } from "../rafeeq/help";
@@ -206,6 +208,14 @@ export class PlatformSource implements DataSource {
 
   issueGroupRafeeqCards(groupId: string, replace: boolean) {
     return this.http.post<GroupCards>(`/v1/groups/${encodeURIComponent(groupId)}/rafeeq`, { replace });
+  }
+
+  health() {
+    return this.http.get<HealthBoard>("/v1/health");
+  }
+
+  pilgrimHealth(pilgrimId: string) {
+    return this.http.get<PilgrimHealth>(`/v1/health/pilgrims/${encodeURIComponent(pilgrimId)}`);
   }
 
   async staff() {

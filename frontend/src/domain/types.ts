@@ -1,5 +1,6 @@
 import type { IncidentAction, IncidentKind, IncidentStatus, Priority } from "./incidents";
 import type { RafeeqLang } from "../rafeeq/help";
+import type { Assessment, Reason } from "../rafeeq/vitals";
 import type { Status } from "./journey";
 
 export type GroupKind = "hajj" | "umrah";
@@ -17,9 +18,11 @@ export type Scope =
   | "incident:write"
   | "analyst:ask"
   | "staff:manage"
-  | "rafeeq:issue";
+  | "rafeeq:issue"
+  | "health:read"
+  | "device:write";
 
-export type Role = "administrator" | "supervisor" | "staff" | "viewer";
+export type Role = "administrator" | "supervisor" | "staff" | "viewer" | "medic";
 
 export interface Me {
   tenant: { id: string; slug: string; name: string; name_ar: string | null; is_demo: boolean };
@@ -37,6 +40,10 @@ export interface Me {
 }
 
 export interface Group {
+  /** where the group gathers; Rafeeq's "Find my way" guides a lost pilgrim there */
+  meeting_name?: string | null;
+  meeting_lat?: number | null;
+  meeting_lon?: number | null;
   id: string;
   code: string;
   name: string;
@@ -294,7 +301,8 @@ export interface NewGroup {
 }
 
 export type GroupChange = Partial<
-  Pick<NewGroup, "name" | "arrival_date" | "departure_date" | "leader_name" | "leader_phone">
+  Pick<NewGroup, "name" | "arrival_date" | "departure_date" | "leader_name" | "leader_phone"> &
+    Pick<Group, "meeting_name" | "meeting_lat" | "meeting_lon">
 >;
 
 export interface NewPilgrim {
@@ -374,6 +382,10 @@ export interface IncidentEvent {
 
 export interface IncidentDetail extends Incident {
   history: IncidentEvent[];
+  /** the pilgrim's latest place while the incident is open, if they share it */
+  live_location?: Place | null;
+  /** the readings behind it; medics and administrators only */
+  health?: { alert: { reasons: Reason[]; heart_rate: number | null; temperature: number | null; started_at: string } | null; now: Assessment | null } | null;
 }
 
 export interface IncidentStats {
@@ -496,4 +508,71 @@ export interface GroupCards {
   cards: IssuedCard[];
   /** pilgrims who already had a card and kept it */
   kept: number;
+}
+
+export interface Place {
+  lat: number;
+  lon: number;
+  accuracy_m: number | null;
+  at: string;
+  source: "phone" | "device" | "simulated";
+}
+
+export interface HealthAlertBrief {
+  id: string;
+  state: "counting" | "cancelled" | "sent";
+  reasons: Reason[];
+  fires_at?: string;
+  incident_id: string | null;
+  incident_ref: number | null;
+}
+
+/** One pilgrim on the health screen: only those who agreed to share. */
+export interface HealthRow {
+  pilgrim_id: string;
+  full_name: string;
+  full_name_ar: string | null;
+  status: string;
+  needs: string[];
+  group_id: string;
+  group_code: string;
+  group_name: string;
+  shares_health: boolean;
+  shares_location: boolean;
+  health: Assessment | null;
+  place: Place | null;
+  alert: HealthAlertBrief | null;
+}
+
+export interface HealthBoard {
+  items: HealthRow[];
+  stats: {
+    danger: number;
+    fever: number;
+    heart: number;
+    dehydration: number;
+    sharing_health: number;
+    sharing_location: number;
+    no_readings: number;
+    alerts: number;
+  };
+  at: string;
+}
+
+export interface PilgrimHealth {
+  consent: { health: boolean; location: boolean };
+  health: Assessment | null;
+  readings: { at: string; heart_rate: number | null; temperature: number | null; source: string }[];
+  alerts: {
+    id: string;
+    state: HealthAlertBrief["state"];
+    reasons: Reason[];
+    heart_rate: number | null;
+    temperature: number | null;
+    started_at: string;
+    ended_at: string | null;
+    incident_id: string | null;
+    incident_ref: number | null;
+  }[];
+  places: Place[];
 }

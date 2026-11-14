@@ -123,6 +123,55 @@ INCIDENTS = [
      "Bus driver", 2900, 6, "Madinah field team", 48, "Found at the mosque clinic; back at the hotel."),
 ]
 
+# Pilgrims sharing health readings and their place on Rafeeq (they agreed):
+# group, position, how the last hour looked, minutes since they last drank,
+# and the city they are in. A pattern of None shares the place only.
+# Invented readings, labelled as the demonstration on every screen.
+VITALS = [
+    ("U-ID-0412", 0, "fever", 140, "MED"),
+    ("U-ID-0412", 1, "normal", 30, "MED"),
+    ("U-ID-0412", 2, "strained", 115, "MED"),
+    ("U-ID-0412", 4, "normal", 50, "MED"),
+    ("U-GB-0044", 0, "fast_heart", 40, "MED"),
+    ("U-GB-0044", 1, "normal", 20, "MED"),
+    ("U-PK-0318", 0, "fever", 70, "MKK"),
+    ("U-PK-0318", 1, "normal", 60, "MKK"),
+    ("U-PK-0318", 2, "no_signal", 200, "MKK"),
+    ("U-PK-0318", 4, None, None, "MKK"),
+]
+# heart rate and temperature ranges per pattern, and how long ago the last reading was
+PATTERNS = {
+    "normal": ((72, 88), (36.6, 37.0), 0),
+    "fever": ((96, 104), (38.3, 38.6), 0),
+    "fast_heart": ((124, 130), (36.9, 37.2), 0),
+    "strained": ((112, 118), (37.8, 37.95), 0),
+    "no_signal": ((78, 84), (36.7, 36.9), 45),
+}
+PLACES = {"MED": (24.4672, 39.6112), "MKK": (21.4225, 39.8262)}
+# Where three groups gather. Invented places near the two mosques, approximate.
+MEETING = {
+    "U-ID-0412": ("Hotel lobby, Al-Salam street", 24.4689, 39.6081),
+    "U-GB-0044": ("Gate 21, Prophet's Mosque", 24.4686, 39.6128),
+    "U-PK-0318": ("King Abdulaziz Gate", 21.4219, 39.8247),
+}
+
+
+def vitals(rng: random.Random) -> list[dict]:
+    out = []
+    for code, i, pattern, water, city in VITALS:
+        lat, lon = PLACES[city]
+        place = {"lat": round(lat + rng.uniform(-0.004, 0.004), 5), "lon": round(lon + rng.uniform(-0.004, 0.004), 5),
+                 "accuracy_m": rng.choice([8, 12, 20, 35]), "minutes_ago": rng.randint(1, 6)}
+        readings = []
+        if pattern:
+            (h0, h1), (c0, c1), late = PATTERNS[pattern]
+            readings = [{"minutes_ago": late + m, "heart_rate": rng.randint(h0, h1),
+                         "temperature": round(rng.uniform(c0, c1), 1)} for m in range(60, -1, -5)]
+        out.append({"group_code": code, "pilgrim_index": i, "pattern": pattern, "health": pattern is not None,
+                    "water_minutes_ago": water, "readings": readings, "place": place})
+    return out
+
+
 PATH = ["registered", "visa_issued", "arrived", "in_makkah", "in_madinah", "departed"]
 
 
@@ -149,7 +198,8 @@ def main() -> None:
         groups.append({"code": code, "name": name, "kind": kind, "season": season, "origin_country": cc,
                        "arrive_in_days": arrive, "depart_in_days": depart,
                        "leader_name": f"{leader_first} {leader_last}",
-                       "leader_phone": f"+966 55 {code[-4:-2]}0 {code[-2:]}{rng.randint(10, 99)}"})
+                       "leader_phone": f"+966 55 {code[-4:-2]}0 {code[-2:]}{rng.randint(10, 99)}",
+                       "meeting": dict(zip(("name", "lat", "lon"), MEETING[code])) if code in MEETING else None})
         for i in range(size):
             first, gender, first_ar = rng.choice(FIRST[cc])
             last, last_ar = rng.choice(LAST[cc])
@@ -201,6 +251,7 @@ def main() -> None:
                        "description": d, "reported_by": by, "minutes_ago": ago, "assigned_after": aa,
                        "team": team, "resolved_after": ra, "resolution": res}
                       for k, pr, g, i, loc, d, by, ago, aa, team, ra, res in INCIDENTS],
+        "vitals": vitals(random.Random(1449)),
     }, ensure_ascii=False, indent=1) + "\n")
     print(f"wrote {OUT} — {len(groups)} groups, {len(pilgrims)} pilgrims, {len(FLIGHTS)} flights, {len(RESOURCES)} shifts, {len(INCIDENTS)} incidents")
 

@@ -124,7 +124,11 @@ export function EditGroupForm({ group, onClose }: { group: Group; onClose: () =>
     departure_date: group.departure_date ?? "",
     leader_name: group.leader_name ?? "",
     leader_phone: group.leader_phone ?? "",
+    meeting_name: group.meeting_name ?? "",
+    meeting_place: group.meeting_lat != null ? `${group.meeting_lat}, ${group.meeting_lon}` : "",
   });
+  /* "24.4689, 39.6081", as copied from a map app; empty clears the meeting point */
+  const place = parsePlace(f.meeting_place);
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
 
   const submit = (e: FormEvent) => {
@@ -136,6 +140,9 @@ export function EditGroupForm({ group, onClose }: { group: Group; onClose: () =>
         departure_date: orNull(f.departure_date),
         leader_name: orNull(f.leader_name),
         leader_phone: orNull(f.leader_phone),
+        meeting_name: place ? f.meeting_name.trim() || null : null,
+        meeting_lat: place?.lat ?? null,
+        meeting_lon: place?.lon ?? null,
       },
       { onSuccess: onClose },
     );
@@ -165,8 +172,23 @@ export function EditGroupForm({ group, onClose }: { group: Group; onClose: () =>
           {t("Leader phone")}
           <input type="tel" value={f.leader_phone} dir="ltr" onChange={set("leader_phone")} />
         </label>
+        <label>
+          {t("Meeting point")}
+          <input value={f.meeting_name} placeholder={t("e.g. Hotel lobby")} required={!!f.meeting_place.trim()} onChange={set("meeting_name")} />
+        </label>
+        <label>
+          {t("Meeting point place")}
+          <input
+            value={f.meeting_place}
+            dir="ltr"
+            placeholder="24.4689, 39.6081"
+            aria-invalid={!!f.meeting_place.trim() && !place}
+            onChange={set("meeting_place")}
+          />
+          <span className={u.hint}>{t("Latitude, longitude: copy it from a map app.")}</span>
+        </label>
         <div className={u.formActions}>
-          <button type="submit" className={u.button} disabled={update.isPending}>
+          <button type="submit" className={u.button} disabled={update.isPending || (!!f.meeting_place.trim() && !place)}>
             {t("Save")}
           </button>
           <button type="button" className={`${u.button} ${u.quiet}`} onClick={onClose}>
@@ -177,4 +199,13 @@ export function EditGroupForm({ group, onClose }: { group: Group; onClose: () =>
       </form>
     </section>
   );
+}
+
+/** "24.4689, 39.6081" → a place; null when empty or not a place. */
+export function parsePlace(text: string): { lat: number; lon: number } | null {
+  const m = /^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,،\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/.exec(text);
+  if (!m) return null;
+  const lat = Number(m[1]);
+  const lon = Number(m[2]);
+  return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat, lon } : null;
 }

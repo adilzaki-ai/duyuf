@@ -137,7 +137,8 @@ export function IncidentsPage() {
   const [status, setStatus] = useState<NonNullable<IncidentFilter["status"]>>("active");
   const [kind, setKind] = useState<IncidentKind | "">("");
   const [reporting, setReporting] = useState(!!forPilgrim);
-  const [open, setOpen] = useState<string | null>(null);
+  /* ?open=<id> from another screen opens that incident */
+  const [open, setOpen] = useState<string | null>(params.get("open"));
   const canWork = useCan("incident:write");
   const q = useIncidents({ status, kind: kind || undefined });
   const now = Date.now();
