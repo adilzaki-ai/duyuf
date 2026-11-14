@@ -1,5 +1,9 @@
 import type { Status } from "../domain/journey";
 import type {
+  AiAdvice,
+  AiBrief,
+  AiCopilot,
+  AiStatus,
   AnalystAnswer,
   AnalystStatus,
   Arrivals,
@@ -216,6 +220,22 @@ export class PlatformSource implements DataSource {
 
   pilgrimHealth(pilgrimId: string) {
     return this.http.get<PilgrimHealth>(`/v1/health/pilgrims/${encodeURIComponent(pilgrimId)}`);
+  }
+
+  aiStatus() {
+    return this.http.get<AiStatus>("/v1/ai/status");
+  }
+
+  aiBrief(language: "en" | "ar", refresh: boolean) {
+    return this.http.post<AiBrief>("/v1/ai/brief", { language, refresh }, 90_000);
+  }
+
+  aiCopilot(incidentId: string, language: "en" | "ar") {
+    return this.http.post<AiCopilot>(`/v1/ai/incidents/${encodeURIComponent(incidentId)}/copilot`, { language }, 90_000);
+  }
+
+  aiAdvice(language: "en" | "ar", hours: number) {
+    return this.http.post<AiAdvice>("/v1/ai/arrivals/advice", { language, hours }, 90_000);
   }
 
   async staff() {

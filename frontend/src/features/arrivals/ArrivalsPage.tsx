@@ -1,16 +1,17 @@
+import { Advisor } from "../ai/Advisor";
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useArrivals, useWhatIf } from "../../api/queries";
 import { useCan } from "../../app/SessionContext";
 import { Failed, Loading, PageHead, Tile, u } from "../../design/ui";
-import { airportName } from "../../domain/airports";
+import { airportName, terminalName } from "../../domain/airports";
 import { BUS_SEATS, INTERPRETER_EVERY } from "../../domain/brief";
 import type { Arrivals, Flight, WhatIf } from "../../domain/types";
 import { fmtDate, fmtHijri, fmtNum, fmtTime, route, sep, t } from "../../i18n";
 import { ksaDate } from "../../lib/dates";
 import { AddFlight } from "./AddFlight";
 import a from "./arrivals.module.css";
-import { dayWord, FlightStateChip, Languages } from "./parts";
+import { dayWord, FlightStateChip, Gate, Languages } from "./parts";
 import { blockName, gapCount, LoadTable, shortText, WhatIfPanel } from "./Plan";
 import { WaveChart } from "./WaveChart";
 
@@ -103,6 +104,8 @@ function FlightsTable({ data }: { data: Arrivals }) {
           <tr>
             <th>{t("Lands")}</th>
             <th>{t("Flight")}</th>
+            <th>{t("Terminal")}</th>
+            <th>{t("Gate")}</th>
             <th>{t("Status")}</th>
             <th className={a.num}>{t("Pilgrims")}</th>
             <th className={a.num}>{t("Wheelchairs")}</th>
@@ -130,6 +133,10 @@ function FlightsTable({ data }: { data: Arrivals }) {
                   <span className={u.sub}>
                     {route(f.origin_airport, airportName(f.arrival_airport))}
                   </span>
+                </td>
+                <td>{f.terminal ? terminalName(f.terminal) : <span className={u.muted}>—</span>}</td>
+                <td>
+                  <Gate gate={f.gate} />
                 </td>
                 <td>
                   <FlightStateChip flight={f} />
@@ -196,6 +203,15 @@ export function ArrivalsPage() {
       </PageHead>
       {adding && <AddFlight onClose={() => setAdding(false)} />}
       {trying && q.data && <WhatIfPanel live={q.data} onShow={setScenario} onClose={backToLive} />}
+      {!scenario && (
+        <Advisor
+          hours={hours}
+          onPreview={(extra) => {
+            setTrying(false);
+            setScenario({ delays: [], extra });
+          }}
+        />
+      )}
       {q.isPending ? (
         <Loading />
       ) : q.isError ? (

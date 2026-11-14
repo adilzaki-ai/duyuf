@@ -59,11 +59,13 @@ def seed(reset: bool = False) -> dict:
         for f in data["flights"]:
             # Saudi wall-clock time: the session's zone is Asia/Riyadh (core/db.py).
             fid[f["number"]] = conn.execute(
-                """INSERT INTO flight (tenant_id, number, origin_airport, arrival_airport, scheduled_at, estimated_at)
+                """INSERT INTO flight (tenant_id, number, origin_airport, arrival_airport, scheduled_at, estimated_at,
+                                      terminal, gate)
                    SELECT %(t)s, %(number)s, %(origin_airport)s, %(arrival_airport)s, s,
-                          CASE WHEN %(delay_minutes)s > 0 THEN s + make_interval(mins => %(delay_minutes)s) END
+                          CASE WHEN %(delay_minutes)s > 0 THEN s + make_interval(mins => %(delay_minutes)s) END,
+                          %(terminal)s, %(gate)s
                      FROM (SELECT ((current_date + %(day)s) + %(time)s::time)::timestamptz AS s) x
-                   RETURNING id""", {**f, "t": tid}).fetchone()["id"]
+                   RETURNING id""", {"terminal": None, "gate": None, **f, "t": tid}).fetchone()["id"]
             conn.execute("""INSERT INTO flight_event (tenant_id, flight_id, kind, detail, actor, at)
                             VALUES (%s, %s, 'created', '{}', 'Demo load', current_date - 20)""", (tid, fid[f["number"]]))
         for r in data["resources"]:

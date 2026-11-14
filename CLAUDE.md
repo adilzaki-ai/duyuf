@@ -41,6 +41,18 @@ database and ports. Never touch Sky Logics from here.
   are the one other place that reads across operators as the owner. Readings
   are health:read only (medic, administrator); other staff get the place, never
   the numbers. Readings kept 7 days, places 48 hours (PROPOSED).
+- Staff AI helpers (`ai/`): briefing, incident co-pilot, arrival advisor. Every
+  instruction lives in `ai/prompts.py`; what each may see in `ai/situations.py`
+  (briefing and advisor: totals only; co-pilot: one incident, first names, never
+  passport, birth date, surname or phone). One structured call each
+  (`ai/core.py`, model `DUYUF_AI_MODEL`, Opus 5.5 by default). Advice only: the
+  log `ai_call` keeps who/model/tokens, never content. The demo asks Claude
+  through the viewer with the same instructions, read from prompts.py by
+  `frontend/src/ai/viewerAi.ts`. The Ask anywhere bar (`features/ai/AskBar.tsx`)
+  finds screens, groups, flights and pilgrims, and sends questions to the analyst.
+- Look: turquoise tokens in `design/global.css`; light by default, a dark
+  operations room via `html[data-theme]` (`design/theme.ts`, the header switch).
+  Mark: `design/DuyufMark.tsx` (an open arch with a crescent).
 - Ask Rafeeq (`rafeeq/ask.py`): one Claude call per question, structured
   {answer, action}; the pilgrim's own page as words (first name, group,
   meeting point, states not numbers; never passport, birth date, surname,

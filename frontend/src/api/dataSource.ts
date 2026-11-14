@@ -1,5 +1,9 @@
 import type { Status } from "../domain/journey";
 import type {
+  AiAdvice,
+  AiBrief,
+  AiCopilot,
+  AiStatus,
   AnalystAnswer,
   AnalystStatus,
   Arrivals,
@@ -99,6 +103,14 @@ export interface DataSource {
   /** Pilgrims sharing readings or their place, the most serious first. Medics and administrators. */
   health(): Promise<HealthBoard>;
   pilgrimHealth(pilgrimId: string): Promise<PilgrimHealth>;
+  /** Whether the AI helpers are set up on the server. */
+  aiStatus(): Promise<AiStatus>;
+  /** The shift briefing from today's totals; reused for ten minutes unless `refresh`. */
+  aiBrief(language: "en" | "ar", refresh: boolean): Promise<AiBrief>;
+  /** Help with one incident: priority, team, next step, messages in the pilgrim's language. */
+  aiCopilot(incidentId: string, language: "en" | "ar"): Promise<AiCopilot>;
+  /** Each gap on the arrivals board explained, with a fix to preview. */
+  aiAdvice(language: "en" | "ar", hours: number): Promise<AiAdvice>;
   staff(): Promise<StaffMember[]>;
   addStaff(s: NewStaff): Promise<StaffMember>;
   updateStaff(id: string, change: StaffChange): Promise<StaffMember>;

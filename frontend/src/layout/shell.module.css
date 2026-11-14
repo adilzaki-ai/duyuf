@@ -15,52 +15,65 @@
   align-items: center;
   gap: 8px 24px;
   padding: 10px 24px;
-  background: var(--brand);
-  color: var(--on-brand);
+  background: var(--header-bg);
+  color: #ffffff;
+  box-shadow: 0 2px 12px rgb(7 90 99 / 0.18);
+  border-bottom: 1px solid rgb(79 224 217 / 0.18);
 }
 
 .brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
   min-width: 0;
 }
 
-.mark {
-  align-self: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: linear-gradient(160deg, var(--gold) 0 45%, transparent 45%), var(--on-brand);
-  opacity: 0.9;
+.brand svg {
+  flex: none;
+  filter: drop-shadow(0 0 8px rgb(46 196 198 / 0.45));
+}
+
+.brandWords {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
 }
 
 .word {
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .operator {
-  font-size: 13px;
-  opacity: 0.75;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* the navigation has a row of its own, under the name, the Ask bar and the tools */
 .nav {
+  order: 3;
+  flex: 1 1 100%;
   display: flex;
   gap: 4px;
-  flex: 1;
   min-width: 0;
+  overflow-x: auto;
+  margin-inline: -6px;
+  scrollbar-width: none;
 }
 
 .nav a {
   white-space: nowrap;
   padding: 6px 12px;
-  border-radius: 8px;
-  color: var(--on-brand);
+  border-radius: 999px;
+  color: #ffffff;
   text-decoration: none;
   opacity: 0.8;
 }
@@ -72,8 +85,27 @@
 
 .nav a.active {
   opacity: 1;
-  background: rgb(255 255 255 / 0.16);
+  background: rgb(255 255 255 / 0.18);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.22);
   font-weight: 600;
+}
+
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.iconButton svg {
+  width: 18px;
+  height: 18px;
 }
 
 .tools {
@@ -94,7 +126,7 @@
   border-radius: 999px;
   border: 1px solid rgb(255 255 255 / 0.35);
   background: transparent;
-  color: var(--on-brand);
+  color: #ffffff;
   cursor: pointer;
 }
 
@@ -117,11 +149,6 @@
 @media (max-width: 640px) {
   .header {
     padding: 10px 16px;
-  }
-  .nav {
-    order: 3;
-    flex-basis: 100%;
-    overflow-x: auto;
   }
   .who {
     display: none;

@@ -168,6 +168,10 @@ export interface Flight {
   expected_at: string;
   delay_minutes: number;
   state: FlightState;
+  /** as the airport names it, e.g. "Hajj Terminal"; null until someone enters it */
+  terminal: string | null;
+  /** the arrival gate, e.g. "H12"; null until someone enters it */
+  gate: string | null;
   note: string | null;
   groups: FlightGroup[];
   brief: Brief;
@@ -178,6 +182,7 @@ export interface Flight {
 export type FlightEvent =
   | { kind: "created"; detail: Record<string, unknown>; actor: string; at: string }
   | { kind: "expected"; detail: { expected_at: string | null }; actor: string; at: string }
+  | { kind: "gate"; detail: { terminal: string | null; gate: string | null }; actor: string; at: string }
   | { kind: "added"; detail: { added: number; group?: string }; actor: string; at: string }
   | { kind: "landed"; detail: { arrived: number; no_visa: number }; actor: string; at: string };
 
@@ -277,12 +282,17 @@ export interface NewFlight {
   arrival_airport: string;
   /** with its zone, e.g. 2026-11-14T21:15:00+03:00 */
   scheduled_at: string;
+  terminal?: string | null;
+  gate?: string | null;
   note?: string;
 }
 
 export interface FlightChange {
   /** null puts the flight back on its schedule */
   estimated_at?: string | null;
+  /** blank or null: not given yet */
+  terminal?: string | null;
+  gate?: string | null;
   note?: string | null;
 }
 
@@ -575,4 +585,59 @@ export interface PilgrimHealth {
     incident_ref: number | null;
   }[];
   places: Place[];
+}
+
+/* ---- the AI helpers (backend/api/duyuf/ai): advice only, nothing is sent or saved by them ---- */
+
+export type AiScreen = "overview" | "arrivals" | "resources" | "incidents" | "health" | "groups" | "pilgrims";
+
+export interface AiStatus {
+  ready: boolean;
+  model: string;
+  reason?: string;
+}
+
+export interface AiBrief {
+  headline: string;
+  points: { text: string; tone: "act" | "watch" | "ok"; screen: AiScreen }[];
+  first_action: { text: string; screen: AiScreen };
+  model: string;
+  /** reused from the last ten minutes */
+  cached?: boolean;
+}
+
+export interface AiMessage {
+  language: string;
+  text: string;
+  english: string;
+}
+
+export interface AiCopilot {
+  summary: string;
+  priority_ok: boolean;
+  suggested_priority: Priority;
+  team: string;
+  next_step: string;
+  message_to_leader: AiMessage;
+  message_to_pilgrim: AiMessage;
+  model: string;
+}
+
+export interface AiGap {
+  gap: number;
+  airport: string;
+  /** "Sat 06:00", Saudi time */
+  from: string;
+  hours: number;
+  kind: ResourceKind;
+  language: string | null;
+  short: number;
+  flights: string[];
+}
+
+export interface AiAdvice {
+  summary: string | null;
+  items: { gap: number; explain: string; fix: string; extra: ExtraResource | null; of: AiGap }[];
+  gaps: AiGap[];
+  model: string | null;
 }

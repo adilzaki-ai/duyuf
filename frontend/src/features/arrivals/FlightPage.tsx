@@ -3,14 +3,14 @@ import { Link, useParams } from "react-router-dom";
 import { useAssignToFlight, useFlight, useGroups, useLandFlight, useUpdateFlight } from "../../api/queries";
 import { useCan } from "../../app/SessionContext";
 import { Failed, Loading, PageHead, u } from "../../design/ui";
-import { airportName } from "../../domain/airports";
+import { airportName, terminalName } from "../../domain/airports";
 import { BUS_SEATS, INTERPRETER_EVERY, OLDER_AGE } from "../../domain/brief";
 import type { FlightDetail, FlightEvent } from "../../domain/types";
 import { fmtDate, fmtDateTime, fmtHijri, fmtNum, fmtTime, getLang, ltr, route, t } from "../../i18n";
 import { daysBetween, ksaDate } from "../../lib/dates";
 import { PilgrimBrowser } from "../pilgrims/PilgrimsPage";
 import a from "./arrivals.module.css";
-import { FlightStateChip, langName } from "./parts";
+import { FlightStateChip, Gate, langName, TerminalList } from "./parts";
 
 function When({ label, iso, extra }: { label: string; iso: string; extra?: string }) {
   const day = ksaDate(new Date(iso));
@@ -53,7 +53,56 @@ function eventText(e: FlightEvent): string {
         : t("{n} pilgrims added", { n: e.detail.added });
     case "landed":
       return t("Landed: {n} moved to Arrived", { n: e.detail.arrived });
+    case "gate":
+      return e.detail.gate || e.detail.terminal
+        ? t("Arrives at {terminal}, gate {gate}", {
+            terminal: e.detail.terminal ? terminalName(e.detail.terminal) : "—",
+            gate: e.detail.gate ?? "—",
+          })
+        : t("Terminal and gate cleared");
   }
+}
+
+function ChangePlace({ f }: { f: FlightDetail }) {
+  const update = useUpdateFlight(f.id);
+  const [terminal, setTerminal] = useState(f.terminal ?? "");
+  const [gate, setGate] = useState(f.gate ?? "");
+  const same = terminal.trim() === (f.terminal ?? "") && gate.trim() === (f.gate ?? "");
+  return (
+    <div>
+      <h3>{t("Terminal and gate")}</h3>
+      <p className={u.hint}>{t("Where to send the wheelchairs, buses and interpreters.")}</p>
+      <div className={a.row}>
+        <input
+          aria-label={t("Terminal")}
+          placeholder={t("Terminal")}
+          list="flight-terminals"
+          value={terminal}
+          maxLength={40}
+          onChange={(e) => setTerminal(e.target.value)}
+        />
+        <TerminalList id="flight-terminals" airport={f.arrival_airport} />
+        <input
+          aria-label={t("Arrival gate")}
+          placeholder="H12"
+          value={gate}
+          maxLength={8}
+          dir="ltr"
+          size={6}
+          onChange={(e) => setGate(e.target.value.toUpperCase())}
+        />
+        <button
+          type="button"
+          className={u.button}
+          disabled={update.isPending || same}
+          onClick={() => update.mutate({ terminal, gate })}
+        >
+          {t("Save")}
+        </button>
+      </div>
+      {update.isError && <p className={u.error}>{update.error.message}</p>}
+    </div>
+  );
 }
 
 function ChangeTime({ f }: { f: FlightDetail }) {
@@ -206,6 +255,17 @@ export function FlightPage() {
             )}
             {f.landed_at && <When label={t("Landed")} iso={f.landed_at} />}
           </ul>
+          <h2 style={{ marginTop: 16 }}>{t("Where")}</h2>
+          <ul className={u.list}>
+            <li>
+              <span>{t("Terminal")}</span>
+              {f.terminal ? <b>{terminalName(f.terminal)}</b> : <Gate gate={null} />}
+            </li>
+            <li>
+              <span>{t("Arrival gate")}</span>
+              <Gate gate={f.gate} />
+            </li>
+          </ul>
           <h2 style={{ marginTop: 16 }}>{t("Groups on board")}</h2>
           {f.groups.length === 0 ? (
             <p className={u.muted}>{t("No one is on this flight yet.")}</p>
@@ -274,6 +334,7 @@ export function FlightPage() {
           <h2>{t("Actions")}</h2>
           {canLand && <Land f={f} />}
           {canPlan && <ChangeTime f={f} />}
+          {canPlan && <ChangePlace f={f} />}
           {canPlan && <AddGroup f={f} />}
         </section>
       )}

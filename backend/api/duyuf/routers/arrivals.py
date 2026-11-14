@@ -32,7 +32,7 @@ DUE_GRACE = timedelta(hours=48)
 LANDED_GRACE = timedelta(hours=6)
 
 _FLIGHT_COLS = """f.id::text, f.number, f.origin_airport, f.arrival_airport, f.scheduled_at,
-                  f.estimated_at, f.landed_at, f.note,
+                  f.estimated_at, f.landed_at, f.note, f.terminal, f.gate,
                   coalesce(f.estimated_at, f.scheduled_at) AS expected_at"""
 
 
@@ -209,12 +209,42 @@ def _as_ksa(v: datetime | None) -> datetime | None:
     return v.replace(tzinfo=KSA) if v is not None and v.tzinfo is None else v
 
 
+_GATE = re.compile(r"^[A-Z0-9][A-Z0-9-]{0,7}$")
+
+
+def _terminal(v: str | None) -> str | None:
+    """Blank is "not given yet"; a name is kept as the airport writes it."""
+    v = " ".join(v.split()) if v else ""
+    if len(v) > 40:
+        raise ValueError("a terminal name is at most 40 letters")
+    return v or None
+
+
+def _gate(v: str | None) -> str | None:
+    v = v.strip().upper().replace(" ", "") if v else ""
+    if v and not _GATE.match(v):
+        raise ValueError("a gate is letters and digits, like H12")
+    return v or None
+
+
 class FlightIn(BaseModel):
     number: str
     origin_airport: str = Field(pattern=r"^[A-Za-z]{3}$")
     arrival_airport: str = Field(pattern=r"^[A-Za-z]{3}$")
     scheduled_at: datetime
+    terminal: str | None = None
+    gate: str | None = None
     note: str | None = None
+
+    @field_validator("terminal")
+    @classmethod
+    def _where(cls, v: str | None) -> str | None:
+        return _terminal(v)
+
+    @field_validator("gate")
+    @classmethod
+    def _at_gate(cls, v: str | None) -> str | None:
+        return _gate(v)
 
     @field_validator("number")
     @classmethod
@@ -237,7 +267,19 @@ class FlightIn(BaseModel):
 
 class FlightPatch(BaseModel):
     estimated_at: datetime | None = None
+    terminal: str | None = None
+    gate: str | None = None
     note: str | None = None
+
+    @field_validator("terminal")
+    @classmethod
+    def _where(cls, v: str | None) -> str | None:
+        return _terminal(v)
+
+    @field_validator("gate")
+    @classmethod
+    def _at_gate(cls, v: str | None) -> str | None:
+        return _gate(v)
 
     @field_validator("estimated_at")
     @classmethod
@@ -264,8 +306,9 @@ class Landed(BaseModel):
 def create_flight(body: FlightIn, who: Identity = Depends(require("flight:write"))):
     with tenant_session(who.tenant_id) as conn:
         fid = conn.execute(
-            """INSERT INTO flight (number, origin_airport, arrival_airport, scheduled_at, note)
-               VALUES (%(number)s, %(origin_airport)s, %(arrival_airport)s, %(scheduled_at)s, %(note)s)
+            """INSERT INTO flight (number, origin_airport, arrival_airport, scheduled_at, terminal, gate, note)
+               VALUES (%(number)s, %(origin_airport)s, %(arrival_airport)s, %(scheduled_at)s,
+                       %(terminal)s, %(gate)s, %(note)s)
                RETURNING id::text""", body.model_dump()).fetchone()["id"]
         _event(conn, fid, "created", {"scheduled_at": body.scheduled_at.isoformat()}, who)
         return _detail(conn, fid)
@@ -285,6 +328,9 @@ def update_flight(flight_id: str, body: FlightPatch, who: Identity = Depends(req
         if "estimated_at" in changes:
             at = changes["estimated_at"]
             _event(conn, flight_id, "expected", {"expected_at": at.isoformat() if at else None}, who)
+        if "terminal" in changes or "gate" in changes:
+            now = conn.execute("SELECT terminal, gate FROM flight WHERE id = %s", (flight_id,)).fetchone()
+            _event(conn, flight_id, "gate", dict(now), who)
         return _detail(conn, flight_id)
 
 

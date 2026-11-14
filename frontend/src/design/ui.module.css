@@ -8,7 +8,9 @@
 }
 
 .pageHead h1 {
-  font-size: 24px;
+  font-family: var(--font-display);
+  font-size: 27px;
+  letter-spacing: -0.015em;
 }
 
 .pageHead p {
@@ -19,9 +21,10 @@
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 16px 18px;
   min-width: 0;
+  box-shadow: var(--shadow);
 }
 
 .card h2 {
@@ -45,11 +48,22 @@
 
 .tile {
   composes: card;
-  border-top: 3px solid var(--brand);
+  position: relative;
+  overflow: hidden;
 }
 
-.tile.attention {
-  border-top-color: var(--gold);
+/* a turquoise rule along the top, glowing in the dark room */
+.tile::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand), var(--accent));
+  box-shadow: var(--glow);
+}
+
+.tile.attention::before {
+  background: linear-gradient(90deg, var(--gold), #f2c66d);
 }
 
 .tileLabel {
@@ -58,7 +72,9 @@
 }
 
 .tileValue {
-  font-size: 30px;
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  font-size: 32px;
   font-weight: 600;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;

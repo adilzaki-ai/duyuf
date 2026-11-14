@@ -129,6 +129,7 @@ export function WhatIfPanel({
             {coming.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.number} · {airportName(f.arrival_airport)}
+                {f.gate ? ` · ${f.gate}` : ""}
               </option>
             ))}
           </select>

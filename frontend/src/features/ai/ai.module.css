@@ -1,0 +1,404 @@
+/* The AI helpers share one look: a turquoise edge, a sparkle badge, and a note that it is advice. */
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(135deg, var(--accent), var(--brand-deep) 60%, var(--gold)) border-box;
+  border: 1.5px solid transparent;
+  box-shadow: var(--shadow), var(--glow);
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+.inPanel {
+  margin: 12px 0 0;
+}
+
+.off {
+  background: var(--surface-2);
+  border: 1px dashed var(--line);
+  box-shadow: none;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+[dir="rtl"] .badge {
+  font-family: inherit;
+  letter-spacing: 0;
+  font-size: 13px;
+}
+
+.spark {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+  filter: drop-shadow(0 0 4px rgb(46 196 198 / 0.5));
+}
+
+.small {
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.headline {
+  font-family: var(--font-display);
+  font-size: 21px;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+[dir="rtl"] .headline {
+  font-family: inherit;
+}
+
+.lead {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 500;
+}
+
+.points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.points li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.points li:last-child {
+  border-bottom: 0;
+}
+
+.pointText {
+  min-width: 0;
+}
+
+.tone {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.act {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+.watch {
+  background: var(--gold-soft);
+  color: #8a5b00;
+}
+
+.ok {
+  background: var(--accent-soft);
+  color: var(--brand-deep);
+}
+
+:root[data-theme="dark"] .watch,
+:root[data-theme="dark"] .ok {
+  color: var(--ink);
+}
+
+.go {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.first {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.first b {
+  color: var(--brand);
+}
+
+.foot {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+/* while Claude reads: three soft bars */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton i {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--surface-2), var(--accent-soft), var(--surface-2));
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.skeleton i:nth-child(2) {
+  width: 80%;
+}
+
+.skeleton i:nth-child(3) {
+  width: 60%;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.facts li {
+  display: grid;
+  grid-template-columns: 7.5em 1fr;
+  gap: 8px;
+}
+
+.facts li > span:first-child {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.okText {
+  color: var(--brand);
+}
+
+.actText {
+  color: var(--danger);
+}
+
+.message {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.message p {
+  margin: 6px 0;
+  font-size: 15px;
+}
+
+.messageHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.messageTools {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.gaps {
+  margin: 0;
+  padding-inline-start: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gaps p {
+  margin: 4px 0;
+}
+
+/* ---- the Ask anywhere bar, in the header ---- */
+
+.askBar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 360px;
+  max-width: 560px;
+  margin-inline: auto;
+  min-width: 180px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.14);
+  border: 1px solid rgb(255 255 255 / 0.28);
+  color: #ffffff;
+}
+
+.askBar:focus-within {
+  background: rgb(255 255 255 / 0.22);
+  box-shadow: 0 0 0 3px rgb(79 224 217 / 0.35);
+}
+
+.askBar .spark {
+  flex: none;
+  color: #bff4f1;
+}
+
+.askBar input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  font-size: 14px;
+  outline: none;
+}
+
+.askBar input::placeholder {
+  color: rgb(255 255 255 / 0.75);
+}
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  color: rgb(255 255 255 / 0.8);
+}
+
+.dropdown {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  min-width: 320px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.22);
+}
+
+.hit {
+  display: grid;
+  grid-template-columns: 5.5em 1fr auto;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.hit[aria-selected="true"],
+.hit:hover {
+  background: var(--accent-soft);
+}
+
+.hitKind {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+}
+
+[dir="rtl"] .hitKind {
+  font-family: inherit;
+  letter-spacing: 0;
+}
+
+.hitLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hitSub {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.answer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.answer p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.link {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand-2);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .askBar {
+    order: 4;
+    flex: 1 1 100%;
+  }
+  .kbd {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton i {
+    animation: none;
+  }
+}
