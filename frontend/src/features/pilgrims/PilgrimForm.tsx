@@ -63,6 +63,7 @@ export function AddPilgrimForm({
     passport_no: "",
     phone: "",
     language: "",
+    visa_expires_on: "",
   };
   const [f, setF] = useState(blank);
   const [needs, setNeeds] = useState<Need[]>([]);
@@ -83,6 +84,7 @@ export function AddPilgrimForm({
         phone: orNull(f.phone),
         language: orNull(f.language),
         needs,
+        visa_expires_on: orNull(f.visa_expires_on),
       },
       {
         /* clear for the next one: people are usually added one after another */
@@ -140,6 +142,10 @@ export function AddPilgrimForm({
           {t("Language")}
           <LanguageSelect value={f.language} onChange={(v) => setF({ ...f, language: v })} />
         </label>
+        <label>
+          {t("Visa ends")}
+          <input type="date" value={f.visa_expires_on} onChange={set("visa_expires_on")} />
+        </label>
         <NeedChecks value={needs} onChange={setNeeds} />
         <div className={u.formActions}>
           <button type="submit" className={u.button} disabled={create.isPending}>
@@ -167,6 +173,7 @@ export function EditPilgrim({ p, onClose }: { p: PilgrimDetail; onClose: () => v
     full_name_ar: p.full_name_ar ?? "",
     phone: p.phone ?? "",
     language: p.language ?? "",
+    visa_expires_on: p.visa_expires_on ?? "",
   });
   const [needs, setNeeds] = useState<Need[]>(p.needs);
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
@@ -180,6 +187,7 @@ export function EditPilgrim({ p, onClose }: { p: PilgrimDetail; onClose: () => v
         phone: orNull(f.phone),
         language: orNull(f.language),
         needs,
+        visa_expires_on: orNull(f.visa_expires_on),
       },
       { onSuccess: onClose },
     );
@@ -202,6 +210,10 @@ export function EditPilgrim({ p, onClose }: { p: PilgrimDetail; onClose: () => v
       <label>
         {t("Language")}
         <LanguageSelect value={f.language} onChange={(v) => setF({ ...f, language: v })} />
+      </label>
+      <label>
+        {t("Visa ends")}
+        <input type="date" value={f.visa_expires_on} onChange={set("visa_expires_on")} />
       </label>
       <NeedChecks value={needs} onChange={setNeeds} />
       {p.arrival_flight_id && p.status !== "departed" && (

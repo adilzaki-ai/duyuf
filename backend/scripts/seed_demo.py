@@ -91,14 +91,15 @@ def seed(reset: bool = False) -> dict:
             pid = conn.execute(
                 """INSERT INTO pilgrim (tenant_id, group_id, full_name, full_name_ar, gender, date_of_birth,
                        nationality, passport_no, phone, language, arrival_flight_id, status, needs,
-                       created_at, updated_at)
+                       visa_expires_on, created_at, updated_at)
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                           current_date + %s::int,
                            (current_date + %s)::timestamp + make_interval(hours => %s),
                            (current_date + %s)::timestamp + make_interval(hours => %s))
                    RETURNING id""",
                 (tid, gid[p["group_code"]], p["full_name"], p["full_name_ar"], p["gender"], p["date_of_birth"],
                  p["nationality"], p["passport_no"], p["phone"], p["language"], fid.get(p["flight"]),
-                 p["status"], p["needs"],
+                 p["status"], p["needs"], p.get("visa_ends_in_days"),
                  p["history"][0]["day"], p["history"][0]["hour"], last["day"], last["hour"])).fetchone()["id"]
             by_place[(p["group_code"], place.setdefault(p["group_code"], 0))] = pid
             place[p["group_code"]] += 1
@@ -134,6 +135,45 @@ def seed(reset: bool = False) -> dict:
                 conn.execute("""UPDATE pilgrim_group SET meeting_name = %s, meeting_lat = %s, meeting_lon = %s
                                 WHERE id = %s""", (g["meeting"]["name"], g["meeting"]["lat"], g["meeting"]["lon"],
                                                    gid[g["code"]]))
+        # Flights home, on each group's departure day; places to stay, eat and visit; a few booking requests.
+        departs = {g["code"]: g["depart_in_days"] for g in data["groups"]}
+        for code, legs in data.get("return_legs", {}).items():
+            for seq, leg in enumerate(legs, start=1):
+                conn.execute(
+                    """INSERT INTO return_leg (tenant_id, group_id, seq, flight_number, from_airport, to_airport,
+                                               departs_at, arrives_at)
+                       VALUES (%s, %s, %s, %s, %s, %s,
+                               ((current_date + %s::int)::timestamp + %s::time) AT TIME ZONE 'Asia/Riyadh',
+                               ((current_date + %s::int)::timestamp + %s::time) AT TIME ZONE 'Asia/Riyadh'
+                                   + make_interval(mins => %s))""",
+                    (tid, gid[code], seq, leg["flight_number"], leg["from_airport"], leg["to_airport"],
+                     departs[code], leg["time"], departs[code], leg["time"], leg["minutes"]))
+        vid = {}
+        for v in data.get("venues", []):
+            vid[v["name"]] = conn.execute(
+                """INSERT INTO venue (tenant_id, kind, city, name, name_ar, stars, price_level, cuisine, rating,
+                                      rating_count, rating_source, price_from, site_id, lat, lon, room_types, accessibility)
+                   VALUES (%(t)s, %(kind)s, %(city)s, %(name)s, %(name_ar)s, %(stars)s, %(price_level)s, %(cuisine)s,
+                           %(rating)s, %(rating_count)s, %(rating_source)s, %(price_from)s, %(site_id)s, %(lat)s, %(lon)s,
+                           %(room_types)s, %(accessibility)s)
+                   RETURNING id""", {**v, "t": tid}).fetchone()["id"]
+        for b in data.get("bookings", []):
+            pay_at = "online" if b["status"] == "awaiting_payment" else "venue" if b["status"] == "confirmed" else None
+            bid = conn.execute(
+                """INSERT INTO booking (tenant_id, pilgrim_id, venue_id, for_date, at_time, nights, people, note, status,
+                                        amount, pay_at, requested_at, rooms, room_type, bed, access_needs, extras)
+                   VALUES (%s, %s, %s, current_date + %s::int, %s, %s, %s, %s, %s, %s, %s, now() - interval '40 minutes',
+                           %s, %s, %s, %s, %s)
+                   RETURNING id""",
+                (tid, by_place[(b["group_code"], b["pilgrim_index"])], vid[b["venue"]], b["days_ahead"], b["time"],
+                 b["nights"], b["people"], b["note"], b["status"], b["amount"] or None, pay_at,
+                 b.get("rooms"), b.get("room_type"), b.get("bed"), b.get("access_needs") or [],
+                 b.get("extras") or [])).fetchone()["id"]
+            conn.execute("""INSERT INTO booking_event (tenant_id, booking_id, kind, actor, at)
+                            VALUES (%s, %s, 'requested', 'Pilgrim, on Rafeeq', now() - interval '40 minutes')""", (tid, bid))
+            if b["status"] != "requested":
+                conn.execute("""INSERT INTO booking_event (tenant_id, booking_id, kind, actor, at)
+                                VALUES (%s, %s, %s, 'Demo load', now() - interval '20 minutes')""", (tid, bid, b["status"]))
         # Health readings and places, from pilgrims who agreed; times counted back from now.
         for v in data.get("vitals", []):
             pid = by_place[(v["group_code"], v["pilgrim_index"])]

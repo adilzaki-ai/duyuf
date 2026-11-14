@@ -55,7 +55,14 @@ import type {
   StaffMember,
   UnplannedGroup,
   WhatIf,
+  NewReturnLeg,
+  NewVenue,
+  ReturnLeg,
+  StaffBooking,
+  Venue,
+  VenueChange,
 } from "../domain/types";
+import { BOOKING_MOVES, bookingRefusal, type StaffAction, type VenueKind } from "../domain/bookings";
 import { addDays, ksaDate, ksaIso, KSA_TZ } from "../lib/dates";
 import { askViewer, viewerReady } from "../ai/viewerAi";
 import { isRafeeqLang, type RafeeqLang } from "../rafeeq/help";
@@ -129,6 +136,9 @@ const ALL_SCOPES: Scope[] = [
   "rafeeq:issue",
   "health:read",
   "device:write",
+  "booking:read",
+  "booking:write",
+  "venue:write",
 ];
 
 /** A day offset and an hour as an instant, read on the Saudi clock (UTC+3, no daylight saving). */
@@ -257,6 +267,7 @@ export class MockSource implements DataSource {
         updated_at: history[history.length - 1].at,
         arrival_flight_id: p.flight ? flightId.get(p.flight)! : null,
         flight_number: p.flight,
+        visa_expires_on: p.visa_ends_in_days == null ? null : addDays(this.today, p.visa_ends_in_days),
         allowed: [...MOVES[status]],
         history,
       });
@@ -1147,6 +1158,164 @@ export class MockSource implements DataSource {
 
   async changePassword(_current: string, _next: string): Promise<Me> {
     throw new DataSourceError("The sample has no passwords. Sign in to the platform to change yours.", { status: 400 });
+  }
+
+  /* ---- flights home, places and bookings ---- */
+
+  private bk: { legs: Map<string, ReturnLeg[]>; venues: Venue[]; bookings: StaffBooking[] } | null = null;
+
+  private bookingState() {
+    if (this.bk) return this.bk;
+    const legs = new Map<string, ReturnLeg[]>();
+    const departs = new Map(sample.groups.map((g) => [g.code, g.depart_in_days]));
+    for (const [code, list] of Object.entries(sample.return_legs as Record<string, { flight_number: string; from_airport: string; to_airport: string; time: string; minutes: number }[]>)) {
+      legs.set(
+        `g-${code}`,
+        list.map((l, i) => {
+          const departs_at = `${addDays(this.today, departs.get(code) ?? 0)}T${l.time}:00+03:00`;
+          return {
+            seq: i + 1,
+            flight_number: l.flight_number,
+            from_airport: l.from_airport,
+            to_airport: l.to_airport,
+            departs_at,
+            arrives_at: plusMinutes(departs_at, l.minutes),
+          };
+        }),
+      );
+    }
+    const venues: Venue[] = sample.venues.map((v, i) => ({
+      ...v,
+      id: `v-${i}`,
+      kind: v.kind as VenueKind,
+      city: v.city as Venue["city"],
+      room_types: v.room_types as Venue["room_types"],
+      accessibility: v.accessibility as Venue["accessibility"],
+      photos: [],
+      phone: null,
+      whatsapp: null,
+      email: null,
+      website: null,
+      address: null,
+      bookable: true,
+      active: true,
+    }));
+    const ago = (mins: number) => ksaIso(new Date(this.clock().getTime() - mins * 60_000));
+    const bookings: StaffBooking[] = sample.bookings.map((b, i) => {
+      const v = venues.find((x) => x.name === b.venue)!;
+      const pid = this.byPlace.get(`${b.group_code}|${b.pilgrim_index}`)!;
+      const p = this.people.get(pid)!;
+      const status = b.status as StaffBooking["status"];
+      return {
+        id: `bk-${i}`,
+        ref: 3001 + i,
+        venue: { id: v.id, kind: v.kind, city: v.city, name: v.name, name_ar: v.name_ar, phone: null, site_id: v.site_id },
+        for_date: addDays(this.today, b.days_ahead),
+        at_time: b.time ? `${b.time}:00` : null,
+        nights: b.nights,
+        people: b.people,
+        note: b.note,
+        rooms: (b as { rooms?: number }).rooms ?? null,
+        room_type: ((b as { room_type?: string }).room_type ?? null) as StaffBooking["room_type"],
+        bed: ((b as { bed?: string }).bed ?? null) as StaffBooking["bed"],
+        access_needs: ((b as { access_needs?: string[] }).access_needs ?? []) as StaffBooking["access_needs"],
+        extras: ((b as { extras?: string[] }).extras ?? []) as StaffBooking["extras"],
+        status,
+        amount: b.amount || null,
+        currency: "SAR",
+        pay_at: status === "awaiting_payment" ? "online" : status === "confirmed" ? "venue" : null,
+        payment_status: "none",
+        payment_provider: null,
+        payment_ref: null,
+        paid_at: null,
+        staff_note: null,
+        requested_at: ago(40),
+        updated_at: ago(status === "requested" ? 40 : 20),
+        pilgrim_id: pid,
+        full_name: p.full_name,
+        full_name_ar: p.full_name_ar,
+        group_code: p.group_code,
+        group_id: p.group_id,
+        history: [
+          { kind: "requested", note: null, actor: "Pilgrim, on Rafeeq", at: ago(40) },
+          ...(status !== "requested" ? [{ kind: status, note: null, actor: "Demo load", at: ago(20) }] : []),
+        ],
+      };
+    });
+    this.bk = { legs, venues, bookings };
+    return this.bk;
+  }
+
+  async returnLegs(groupId: string): Promise<ReturnLeg[]> {
+    if (!this.groupsById.has(groupId)) throw new DataSourceError("no such group", { status: 404 });
+    return (this.bookingState().legs.get(groupId) ?? []).map((l) => ({ ...l }));
+  }
+
+  async setReturnLegs(groupId: string, legs: NewReturnLeg[]): Promise<ReturnLeg[]> {
+    if (!this.groupsById.has(groupId)) throw new DataSourceError("no such group", { status: 404 });
+    for (let i = 1; i < legs.length; i++) {
+      if (Date.parse(legs[i].departs_at) <= Date.parse(legs[i - 1].departs_at))
+        throw new DataSourceError("list the legs in the order they fly", { status: 422 });
+      if (legs[i].from_airport !== legs[i - 1].to_airport)
+        throw new DataSourceError(`leg ${i + 1} should leave from ${legs[i - 1].to_airport}, where the one before lands`, { status: 422 });
+    }
+    const saved = legs.map((l, i) => ({ ...l, seq: i + 1, arrives_at: l.arrives_at ?? null }));
+    this.bookingState().legs.set(groupId, saved);
+    return saved.map((l) => ({ ...l }));
+  }
+
+  async venues(): Promise<Venue[]> {
+    return this.bookingState().venues.map((v) => ({ ...v }));
+  }
+
+  async addVenue(v: NewVenue): Promise<Venue> {
+    if (v.rating != null && !v.rating_source) throw new DataSourceError("say where the rating comes from (rating_source)", { status: 422 });
+    const st = this.bookingState();
+    const made = { ...v, id: `v-new-${st.venues.length}` };
+    st.venues.push(made);
+    return { ...made };
+  }
+
+  async updateVenue(id: string, change: VenueChange): Promise<Venue> {
+    const v = this.bookingState().venues.find((x) => x.id === id);
+    if (!v) throw new DataSourceError("no such place", { status: 404 });
+    Object.assign(v, change);
+    return { ...v };
+  }
+
+  async bookings() {
+    const list = [...this.bookingState().bookings].sort(
+      (a, b) =>
+        Number(["requested", "awaiting_payment"].includes(b.status)) - Number(["requested", "awaiting_payment"].includes(a.status)) ||
+        b.requested_at.localeCompare(a.requested_at),
+    );
+    return { bookings: list.map((b) => ({ ...b })), waiting: list.filter((b) => b.status === "requested").length };
+  }
+
+  async booking(id: string) {
+    const b = this.bookingState().bookings.find((x) => x.id === id);
+    if (!b) throw new DataSourceError("no such booking", { status: 404 });
+    return { ...b, history: [...(b.history ?? [])] };
+  }
+
+  async decideBooking(id: string, action: StaffAction, amount?: number | null, note?: string | null) {
+    const b = this.bookingState().bookings.find((x) => x.id === id);
+    if (!b) throw new DataSourceError("no such booking", { status: 404 });
+    const why = bookingRefusal(b.status, action);
+    if (why) throw new DataSourceError(why, { status: 409 });
+    if (action === "ask_payment" && !amount) throw new DataSourceError("say how much to pay online", { status: 422 });
+    b.status = BOOKING_MOVES[action].to;
+    if (action === "ask_payment") {
+      b.amount = amount ?? null;
+      b.pay_at = "online";
+    } else if (action === "confirm") {
+      b.amount = amount ?? null;
+      b.pay_at = "venue";
+    } else if (b.payment_status === "paid") b.payment_status = "refund_due";
+    if (note) b.staff_note = note;
+    b.updated_at = this.now();
+    b.history = [...(b.history ?? []), { kind: b.status, note: note ?? null, actor: ACTOR, at: this.now() }];
+    return { ...b, history: [...b.history] };
   }
 
   async staff(): Promise<StaffMember[]> {

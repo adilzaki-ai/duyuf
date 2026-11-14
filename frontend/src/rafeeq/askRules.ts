@@ -44,6 +44,9 @@ export function situation(page: RafeeqPage, now = new Date()) {
     health: h ? { overall: h.level, heart: h.heart.state, temperature: h.temperature.state, heat: h.heat, water: h.hydration } : null,
     open_calls_for_help: page.calls.filter((c) => c.status !== "resolved").map((c) => c.kind),
     medical_countdown_running: !!page.alert,
+    city_now: page.status === "in_makkah" ? "Makkah" : page.status === "in_madinah" ? "Madinah" : null,
+    visa_ends_on: page.visa_expires_on ?? null,
+    group_leaves_on: page.leaving_on ?? null,
   };
 }
 

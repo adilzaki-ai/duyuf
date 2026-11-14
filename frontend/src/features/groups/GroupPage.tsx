@@ -10,6 +10,7 @@ import { PilgrimBrowser } from "../pilgrims/PilgrimsPage";
 import { GroupRafeeq } from "../rafeeq/RafeeqCards";
 import { EditGroupForm } from "./GroupForm";
 import { ImportPilgrims } from "./ImportPilgrims";
+import { ReturnLegs } from "./ReturnLegs";
 
 export function GroupPage() {
   const { id } = useParams();
@@ -94,6 +95,9 @@ export function GroupPage() {
             <JourneyBar by={g.by_status} big legend />
           </div>
         </section>
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <ReturnLegs groupId={g.id} leaves={g.departure_date} />
       </div>
       <PilgrimBrowser groupId={g.id} />
     </>

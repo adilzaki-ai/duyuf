@@ -5,11 +5,16 @@ import { AMBULANCE, EMERGENCY, isRafeeqLang, isRtl, NATIVE_NAMES, RAFEEQ_LANGUAG
 import { AskRafeeq } from "./AskRafeeq";
 import { Cover } from "./Cover";
 import { FindMyWay } from "./FindMyWay";
-import { AskIcon, CompassIcon, SirenIcon, SunIcon } from "./icons";
+import { AmbulanceIcon, AskIcon, BedIcon, CompassIcon, MapIcon, MedicalCrescentIcon, SirenIcon, SunIcon } from "./icons";
 import { RafeeqLogo } from "./Logo";
 import { ConsentCard, Countdown, DemoTry, HealthPanel, HeatWarning, PlaceLine, useSharePlace } from "./HealthParts";
-import { cardToken, createRafeeqSource, type AskAction, type NewReading, type RafeeqCall, type RafeeqPage, type RafeeqSource } from "./source";
+import { cardToken, createRafeeqSource, type Venue, type AskAction, type NewReading, type RafeeqCall, type RafeeqPage, type RafeeqSource } from "./source";
 import { WALK } from "./places";
+import { FlightsHome, HOME_TABLE_LINES, ReminderBanner } from "./GoingHome";
+import { Stay, STAY_TABLE_LINES } from "./Stay";
+import { Trips, TRIPS_TABLE_LINES } from "./Trips";
+import { VisaCard } from "./Visa";
+import { cityOf, useWeather, WEATHER_TABLE_LINES, WeatherCard, WeatherView } from "./Weather";
 import { iso, say } from "./words";
 import "@fontsource/reem-kufi/500.css";
 import "@fontsource/reem-kufi/600.css";
@@ -37,7 +42,7 @@ const ALERT_POLL_MS = 2_000;
 
 type Start = () => Promise<RafeeqSource | null>;
 type Problem = "no-card" | "stopped" | "offline" | null;
-type View = { name: "home" } | { name: "heat" } | { name: "way" } | { name: "ask" } | { name: "confirm"; kind: HelpKind } | { name: "failed"; kind: HelpKind };
+type View = { name: "home" } | { name: "heat" } | { name: "way" } | { name: "ask" } | { name: "weather" } | { name: "trips" } | { name: "stay"; open?: string | null } | { name: "confirm"; kind: HelpKind } | { name: "failed"; kind: HelpKind };
 
 const defaultStart: Start = async () => {
   /* the sample needs no card: a demonstration opens straight on its invented pilgrim */
@@ -112,7 +117,7 @@ const KIND_NAME: Record<RafeeqCall["kind"], string> = {
   sos: "SOS",
   lost: "I am lost",
   heat: "Unwell in the heat",
-  medical: "Medical alert",
+  medical: "Ambulance called",
 };
 
 const HEAT_ADVICE = [
@@ -123,7 +128,7 @@ const HEAT_ADVICE = [
 const HEAT_WARNING = "Headache, dizziness, sickness or very hot skin? Stop, find shade, drink water, and press the button below.";
 
 /** The English the page passes to say() through its tables, for the words test. */
-export const RAFEEQ_TABLE_LINES = [...Object.values(KIND_NAME), ...HEAT_ADVICE, HEAT_WARNING, ...WALK];
+export const RAFEEQ_TABLE_LINES = [...Object.values(KIND_NAME), ...HEAT_ADVICE, HEAT_WARNING, ...WALK, ...WEATHER_TABLE_LINES, ...TRIPS_TABLE_LINES, ...HOME_TABLE_LINES, ...STAY_TABLE_LINES];
 
 const WELCOMED_KEY = "rafeeq.welcomed";
 
@@ -164,6 +169,13 @@ export function RafeeqApp({ start = defaultStart, cover }: { start?: Start; cove
   const [sending, setSending] = useState(false);
   const where = useRef<Promise<string | null> | null>(null);
   const speak = useVoice(lang);
+  const weather = useWeather(source);
+  /* the attractions that take a booking, for Visit the sites */
+  const [attractions, setAttractions] = useState<Venue[]>([]);
+  useEffect(() => {
+    if (!source) return;
+    source.venues("attraction").then((x) => setAttractions(x.venues), () => {});
+  }, [source]);
 
   const setLang = (l: RafeeqLang) => {
     chose.current = true;
@@ -286,6 +298,22 @@ export function RafeeqApp({ start = defaultStart, cover }: { start?: Start; cove
     }
   };
 
+  /**
+   * "Call ambulance": the phone dials 997 at once (the link does that) and,
+   * at the same moment, the team is told so they can go and meet the
+   * ambulance. No question first: it is an emergency, and the dialer asks.
+   * If it does not get through, the call to 997 still happens.
+   */
+  const tellGroupAmbulance = async () => {
+    if (!source) return;
+    try {
+      const location = await Promise.race([whereAmI(), new Promise<null>((d) => setTimeout(() => d(null), 3_000))]);
+      took(await source.help("medical", location, lang));
+    } catch {
+      /* they are on the phone to 997; the page shows no call card, which is the truth */
+    }
+  };
+
   const fine = async (c: RafeeqCall) => {
     if (!source) return;
     try {
@@ -387,6 +415,38 @@ export function RafeeqApp({ start = defaultStart, cover }: { start?: Start; cove
         <Numbers lang={lang} page={page} />
       </>
     );
+  } else if (view.name === "weather") {
+    spoken = s("Daily weather");
+    body = (
+      <>
+        <WeatherView report={weather.report} failed={weather.failed} lang={lang} first={cityOf(page.status)} onBack={() => setView({ name: "home" })} />
+        <Numbers lang={lang} page={page} />
+      </>
+    );
+  } else if (view.name === "trips") {
+    spoken = s("Holy Sites & Attractions");
+    body = (
+      <>
+        <Trips
+          lang={lang}
+          first={cityOf(page.status)}
+          weather={weather.report}
+          speak={speak}
+          attractions={attractions}
+          onBook={(venueId) => setView({ name: "stay", open: venueId })}
+          onBack={() => setView({ name: "home" })}
+        />
+        <Numbers lang={lang} page={page} />
+      </>
+    );
+  } else if (view.name === "stay" && source) {
+    spoken = s("Food and hotels");
+    body = (
+      <>
+        <Stay source={source} lang={lang} first={cityOf(page.status)} open={view.open} onBack={() => setView({ name: "home" })} />
+        <Numbers lang={lang} page={page} />
+      </>
+    );
   } else if (view.name === "heat") {
     const advice = HEAT_ADVICE;
     const warning = HEAT_WARNING;
@@ -420,19 +480,39 @@ export function RafeeqApp({ start = defaultStart, cover }: { start?: Start; cove
             {(isRtl(lang) && page.operator_ar) || page.operator} · {page.group_name}
           </p>
         </section>
+        <ReminderBanner page={page} lang={lang} />
         {!page.consent?.health && <HeatWarning lang={lang} />}
         {page.calls.map((c) => (
           <CallCard key={c.id} call={c} lang={lang} onFine={() => void fine(c)} />
         ))}
-        <button type="button" className={`${r.big} ${r.sos} ${r.sosHome}`} onClick={() => ask("sos")}>
-          <span className={r.sosRing} aria-hidden="true">
-            <SirenIcon />
-          </span>
-          <span className={r.sosWords}>
+        <section className={r.sosPanel} aria-label={s("SOS")}>
+          <p className={r.sosTitle}>
             <b>{s("SOS")}</b>
+            <span className={r.sosCrescent}>
+              <MedicalCrescentIcon />
+            </span>
             <span>{s("Emergency: I need help now")}</span>
-          </span>
-        </button>
+          </p>
+          <div className={r.sosTwo}>
+            <button type="button" className={r.sosGroup} onClick={() => ask("sos")}>
+              <span className={r.sosRing} aria-hidden="true">
+                <SirenIcon />
+              </span>
+              <b>{s("Alert my group")}</b>
+              <small>{s("Your group's team comes to you.")}</small>
+            </button>
+            <a className={r.sosAmb} href={`tel:${AMBULANCE}`} onClick={() => void tellGroupAmbulance()}>
+              <span className={r.sosAmbulance} aria-hidden="true">
+                <AmbulanceIcon />
+              </span>
+              <b>{s("Call ambulance")}</b>
+              <span className={r.sosAmbNumber} dir="ltr">
+                {AMBULANCE}
+              </span>
+              <small>{s("Your group is told too.")}</small>
+            </a>
+          </div>
+        </section>
         <button type="button" className={`${r.big} ${r.askHome}`} onClick={() => setView({ name: "ask" })}>
           <span className={r.tileIcon}>
             <AskIcon />
@@ -456,6 +536,29 @@ export function RafeeqApp({ start = defaultStart, cover }: { start?: Start; cove
             </span>
             <b>{s("Heat safety")}</b>
           </button>
+        </div>
+        <WeatherCard report={weather.report} failed={weather.failed} city={cityOf(page.status)} lang={lang} onOpen={() => setView({ name: "weather" })} />
+        <button type="button" className={`${r.big} ${r.tripsHome}`} onClick={() => setView({ name: "trips" })}>
+          <span className={r.tileIcon}>
+            <MapIcon />
+          </span>
+          <span className={r.tileWords}>
+            <b>{s("Holy Sites & Attractions")}</b>
+            <span>{s("Holy and historic places, with a plan for your day")}</span>
+          </span>
+        </button>
+        <button type="button" className={`${r.big} ${r.stayHome}`} onClick={() => setView({ name: "stay" })}>
+          <span className={r.tileIcon}>
+            <BedIcon />
+          </span>
+          <span className={r.tileWords}>
+            <b>{s("Food and hotels")}</b>
+            <span>{s("Restaurants and hotels, with ratings. Book and pay.")}</span>
+          </span>
+        </button>
+        <div className={r.goingHome}>
+          <VisaCard page={page} lang={lang} />
+          <FlightsHome page={page} lang={lang} />
         </div>
         {page.consent && problem !== "offline" && <ConsentCard page={page} lang={lang} onAnswer={answer} />}
         {page.consent?.health && page.health && (

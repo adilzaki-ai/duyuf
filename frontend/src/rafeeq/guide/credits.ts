@@ -1,0 +1,30 @@
+import type { SiteId } from "./sites";
+
+/** Who took each photo and under which licence, from Wikimedia Commons. Shown under the photo. */
+export const CREDITS: Partial<Record<SiteId, { author: string; license: string; url: string }>> = {
+  haram: { author: "Saudipics.com", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Edited_Great_Mosque_of_Mecca1_5-2019-ccsa4.0_(cropped).jpg" },
+  hira: { author: "King Eliot", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Jabl_e_Noor.jpg" },
+  thawr: { author: "King Eliot", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Jabl_e_Thawr.jpg" },
+  mina: { author: "Mubeen Rahman", license: "CC BY 3.0", url: "https://commons.wikimedia.org/wiki/File:Mina_Overview.JPG" },
+  khayf: { author: "Bluemangoa2z at Malayalam Wikipedia", license: "CC BY-SA 2.5", url: "https://commons.wikimedia.org/wiki/File:Masjid_khaif_mina.JPG" },
+  jamarat: { author: "saudipics", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Jamaraat_Bridge_2.jpg" },
+  muzdalifah: { author: "Glory20", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:%D9%85%D8%B3%D8%AC%D8%AF_%D8%A7%D9%84%D9%85%D8%B4%D8%B9%D8%B1_%D8%A7%D9%84%D8%AD%D8%B1%D8%A7%D9%85.jpg" },
+  arafat: { author: "Ilhamnobi", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Masjid_al-Namira.jpg" },
+  rahmah: { author: "saudipics", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Mount_Arafat3.jpg" },
+  mualla: { author: "Richard Mortel", license: "CC BY 2.0", url: "https://commons.wikimedia.org/wiki/File:Entrance_to_oldest_section_of_al-Malaa_cemetery_at_Mecca,_Saudi_Arabia.jpg" },
+  jinn: { author: "Sadrettin", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Mosque_of_the_Jinn_03.jpg" },
+  aisha: { author: "Imam Khairul Annas", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Masjid_Aisha_(1).jpg" },
+  architecture: { author: "Yasser.Bakhsh", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:The_Two_Holy_Mosques_Architecture_Exhibition.jpg" },
+  nabawi: { author: "Diego Delso", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Mezquita_del_Profeta,_Medina,_Arabia_Saudita,_2025-05-22,_DD_02.jpg" },
+  quba: { author: "Kaliper1", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Quba_Mosque_from_Afar_(2024).jpg" },
+  baqi: { author: "Saleh Al Hussain", license: "CC BY 4.0", url: "https://commons.wikimedia.org/wiki/File:Al-Baqi_Cemetery_2021.jpg" },
+  uhud: { author: "Diego Delso", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Mezquita_Sayyid_Ash-Shuhada,_Medina,_Arabia_Saudita,_2025-05-22,_DD_07.jpg" },
+  qiblatayn: { author: "Diego Delso", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Mezquita_de_al-Qiblatayn,_Medina,_Arabia_Saudita,_2025-05-22,_DD_09.jpg" },
+  sabaa: { author: "Imam Khairul Annas", license: "CC BY-SA 3.0", url: "https://commons.wikimedia.org/wiki/File:Sab%27u_Masajid.jpg" },
+  ghamamah: { author: "Diego Delso", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Mezquita_de_Al-Ghamama,_Medina,_Arabia_Saudita,_2025-05-22,_DD_03.jpg" },
+  jumuah: { author: "Imam Khairul Annas", license: "CC BY-SA 3.0", url: "https://commons.wikimedia.org/wiki/File:Masjid_Jum%27ah.jpg" },
+  dar_madinah: { author: "Abuhamzah 28", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Dar_al-Madinah_Museum_(Medina)_-_Facade.jpg" },
+  hejaz_railway: { author: "الدبوني", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Medina_Railway_Station_2016.jpg" },
+  seerah: { author: "Oxorca", license: "CC BY-SA 4.0", url: "https://commons.wikimedia.org/wiki/File:Sign_of_the_museum,_right_above_the_visitor_enterance,_The_International_Fair_and_Museum_of_the_Prophet%27s_Biography_and_Islamic_Civilization.jpg" },
+  quran_complex: { author: "Imam Khairul Annas", license: "CC BY-SA 3.0", url: "https://commons.wikimedia.org/wiki/File:Percetakan_Al-Qur%60an_Raja_Fahd.JPG" },
+};

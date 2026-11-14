@@ -11,6 +11,8 @@ import asyncio
 import logging
 
 from ..health.record import fire
+from ..weather import forecast
+from ..weather.rules import REFRESH_MIN
 from .db import owner_session, tenant_session
 
 log = logging.getLogger("duyuf.jobs")
@@ -41,3 +43,11 @@ async def run_forever() -> None:
         except Exception:  # a bad round must not stop the next one
             log.exception("job round failed")
         await asyncio.sleep(EVERY_S)
+
+
+async def weather_forever() -> None:
+    """The forecast for Rafeeq's weather report, fetched again every REFRESH_MIN minutes
+    (sooner after a failure, keeping the last good one meanwhile)."""
+    while True:
+        ok = await asyncio.to_thread(forecast.refresh)
+        await asyncio.sleep(REFRESH_MIN * 60 if ok else 300)

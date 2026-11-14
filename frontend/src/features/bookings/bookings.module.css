@@ -1,0 +1,134 @@
+.tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface-2, var(--line));
+}
+
+.tabs button {
+  font: inherit;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.tabs button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (min-width: 1100px) {
+  .split:has(.panel) {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  }
+}
+
+.panel {
+  position: sticky;
+  top: 12px;
+}
+
+.panelHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.panelHead h2 {
+  margin: 0;
+}
+
+.status {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--tone, #5f7c80);
+  white-space: nowrap;
+}
+
+.s_requested {
+  --tone: #0a7f8a;
+}
+.s_awaiting_payment {
+  --tone: #b26f00;
+}
+.s_confirmed {
+  --tone: #2e7d32;
+}
+.s_declined,
+.s_cancelled {
+  --tone: #8a8a8a;
+}
+
+.note {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-2, rgb(10 127 138 / 0.08));
+}
+
+.history {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.check {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.scroll .status {
+  white-space: normal;
+}
+
+.access {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 2px solid #1565c0;
+  background: rgb(21 101 192 / 0.06);
+}
+
+.access ul {
+  margin: 6px 0;
+  padding-inline-start: 20px;
+}
+
+.boxes {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+}

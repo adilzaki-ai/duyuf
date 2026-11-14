@@ -37,7 +37,14 @@ import type {
   PilgrimFilter,
   PilgrimHealth,
   RafeeqCardInfo,
+  NewReturnLeg,
+  NewVenue,
+  ReturnLeg,
+  StaffBooking,
+  Venue,
+  VenueChange,
 } from "../domain/types";
+import type { StaffAction } from "../domain/bookings";
 import type { RafeeqLang } from "../rafeeq/help";
 import type { DataSource } from "./dataSource";
 import { HttpClient, type HttpOptions } from "./http";
@@ -248,5 +255,37 @@ export class PlatformSource implements DataSource {
 
   updateStaff(id: string, change: StaffChange) {
     return this.http.patch<StaffMember>(`/v1/staff/${encodeURIComponent(id)}`, change);
+  }
+
+  async returnLegs(groupId: string) {
+    return (await this.http.get<{ legs: ReturnLeg[] }>(`/v1/groups/${encodeURIComponent(groupId)}/return-legs`)).legs;
+  }
+
+  async setReturnLegs(groupId: string, legs: NewReturnLeg[]) {
+    return (await this.http.put<{ legs: ReturnLeg[] }>(`/v1/groups/${encodeURIComponent(groupId)}/return-legs`, { legs })).legs;
+  }
+
+  async venues() {
+    return (await this.http.get<{ venues: Venue[] }>("/v1/venues")).venues;
+  }
+
+  addVenue(v: NewVenue) {
+    return this.http.post<Venue>("/v1/venues", v);
+  }
+
+  updateVenue(id: string, change: VenueChange) {
+    return this.http.patch<Venue>(`/v1/venues/${encodeURIComponent(id)}`, change);
+  }
+
+  bookings() {
+    return this.http.get<{ bookings: StaffBooking[]; waiting: number }>("/v1/bookings");
+  }
+
+  booking(id: string) {
+    return this.http.get<StaffBooking>(`/v1/bookings/${encodeURIComponent(id)}`);
+  }
+
+  decideBooking(id: string, action: StaffAction, amount?: number | null, note?: string | null) {
+    return this.http.post<StaffBooking>(`/v1/bookings/${encodeURIComponent(id)}/decide`, { action, amount: amount ?? null, note: note || null });
   }
 }

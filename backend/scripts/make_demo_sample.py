@@ -191,6 +191,135 @@ def history(steps: list[str], arrive: int, depart: int, early_exit: bool = False
     return out
 
 
+def visa_ends(status: str, kind: str, arrive: int, depart: int, i: int) -> int | None:
+    """Days from today to the last day of the visa; None before it is issued. An Umrah visa runs
+    90 days from issue (issued two weeks before arrival here); a Hajj visa a little past departure.
+    One pilgrim in each group already in the Kingdom has a visa that ends before the group leaves,
+    so staff and Rafeeq both have the case to show."""
+    if status == "registered":
+        return None
+    if status in ("in_makkah", "in_madinah") and i == 7:
+        return depart - 2
+    return depart + 10 if kind == "hajj" else arrive - 14 + 90
+
+
+# Flights home, leg by leg: number, from, to, days from today (the group's departure day),
+# leaves (Saudi time), minutes in the air. Invented numbers on real airline codes, like FLIGHTS.
+RETURN_LEGS = {
+    "U-ID-0412": [("SV 1466", "MED", "JED", "08:10", 70), ("SV 818", "JED", "CGK", "13:40", 600)],
+    "U-GB-0044": [("SV 1472", "MED", "JED", "06:30", 70), ("SV 113", "JED", "LHR", "12:15", 400)],
+    "U-PK-0318": [("PK 744", "JED", "KHI", "15:20", 195), ("PK 302", "KHI", "LHE", "21:00", 105)],
+    "U-EG-0207": [("MS 684", "JED", "CAI", "06:15", 140)],
+    "U-TR-0155": [("TK 93", "MED", "IST", "09:00", 225)],
+    "U-NG-0090": [("SV 3307", "JED", "KAN", "14:20", 320)],
+    "U-BD-0310": [("BG 136", "JED", "DAC", "18:10", 330)],
+    "U-PK-0322": [("SV 704", "JED", "KHI", "22:30", 190)],
+    "U-ID-0430": [("GA 981", "MED", "UPG", "11:40", 600)],
+    "U-IN-0118": [("6E 64", "JED", "HYD", "04:20", 270)],
+    "U-NG-0095": [("SV 3305", "MED", "ABV", "15:00", 330)],
+}
+
+# Places to stay, eat and visit. INVENTED names and ratings (rating_source "Sample"):
+# the real list is the operator's own, with ratings from a named source.
+# kind, city, name, name_ar, stars, price level (1 simple … 4 upscale), cuisine, rating, count,
+# SAR from (a night / a person), metres north and east of the main mosque.
+VENUES = [
+    ("hotel", "makkah", "Qiblah Tower Hotel", "فندق برج القبلة", 5, None, None, 4.7, 3120, 1450, 250, -120),
+    ("hotel", "makkah", "Ajyad Palace Suites", "أجنحة قصر أجياد", 5, None, None, 4.6, 2210, 1180, -380, -60),
+    ("hotel", "makkah", "Misfalah Grand", "مسفلة جراند", 4, None, None, 4.3, 1780, 620, -900, -300),
+    ("hotel", "makkah", "Ibrahim Khalil Inn", "نزل إبراهيم الخليل", 4, None, None, 4.1, 950, 480, -1300, -500),
+    ("hotel", "makkah", "Kudai Stay", "إقامة كدي", 3, None, None, 4.0, 1320, 290, -2600, 300),
+    ("hotel", "makkah", "Shubaika Rooms", "غرف الشبيكة", 3, None, None, 3.8, 640, 240, 500, -700),
+    ("hotel", "makkah", "Aziziyah Family Lodge", "نزل العزيزية العائلي", 2, None, None, 3.9, 410, 160, -1200, 3900),
+    ("hotel", "makkah", "Pilgrim Rest House", "دار راحة الحاج", 2, None, None, 3.6, 520, 120, 1800, 1500),
+    ("hotel", "madinah", "Rawdah Gardens Hotel", "فندق حدائق الروضة", 5, None, None, 4.8, 2890, 1300, 300, 150),
+    ("hotel", "madinah", "Quba Royal Residence", "مقر قباء الملكي", 5, None, None, 4.5, 1450, 980, -420, 60),
+    ("hotel", "madinah", "Al Salam Avenue Hotel", "فندق جادة السلام", 4, None, None, 4.4, 1610, 540, 150, -350),
+    ("hotel", "madinah", "Bab Jibril Suites", "أجنحة باب جبريل", 4, None, None, 4.2, 870, 450, -100, 380),
+    ("hotel", "madinah", "Markaziyah Comfort", "راحة المركزية", 3, None, None, 4.0, 990, 260, 650, -200),
+    ("hotel", "madinah", "Sultanah Inn", "نزل السلطانة", 3, None, None, 3.9, 510, 210, -900, -1200),
+    ("hotel", "madinah", "Uhud View Lodge", "نزل إطلالة أحد", 2, None, None, 3.8, 330, 140, 2900, 200),
+    ("hotel", "madinah", "Anbariyah Rooms", "غرف العنبرية", 2, None, None, 3.5, 290, 110, -500, -1300),
+    ("restaurant", "makkah", "Clock View Grill", "مشويات إطلالة الساعة", None, 4, "Arabic grill", 4.6, 1840, 220, 280, -150),
+    ("restaurant", "makkah", "Saffron Terrace", "شرفة الزعفران", None, 3, "Indian", 4.4, 1210, 110, -400, -80),
+    ("restaurant", "makkah", "Bukhari House", "بيت البخاري", None, 2, "Saudi rice dishes", 4.5, 2630, 55, -950, -250),
+    ("restaurant", "makkah", "Mandi Corner", "ركن المندي", None, 1, "Yemeni mandi", 4.3, 3110, 30, -1250, -450),
+    ("restaurant", "makkah", "Istanbul Kebab Hall", "صالة كباب إسطنبول", None, 2, "Turkish", 4.2, 870, 60, 450, -650),
+    ("restaurant", "makkah", "Nusantara Kitchen", "مطبخ نوسانتارا", None, 2, "Indonesian", 4.1, 640, 45, -2500, 350),
+    ("restaurant", "makkah", "Lahore Karahi Point", "كراهي لاهور", None, 1, "Pakistani", 4.0, 1980, 25, -1100, 3800),
+    ("restaurant", "makkah", "Date Palm Café", "مقهى النخلة", None, 1, "Café", 4.2, 760, 20, 200, 120),
+    ("restaurant", "madinah", "Manakha Fine Dining", "مطعم المناخة الراقي", None, 4, "International", 4.6, 1320, 240, 280, -180),
+    ("restaurant", "madinah", "Quba Garden Restaurant", "مطعم حديقة قباء", None, 3, "Arabic", 4.5, 1040, 95, -2900, 120),
+    ("restaurant", "madinah", "Madinah Dates & Coffee", "تمور وقهوة المدينة", None, 1, "Café", 4.4, 2210, 20, 120, 260),
+    ("restaurant", "madinah", "Kabsa Majlis", "مجلس الكبسة", None, 2, "Saudi", 4.3, 1760, 50, 600, -250),
+    ("restaurant", "madinah", "Cairo Koshary", "كشري القاهرة", None, 1, "Egyptian", 4.0, 690, 22, -800, -1100),
+    ("restaurant", "madinah", "Jakarta Rasa", "جاكرتا رسا", None, 2, "Indonesian", 4.2, 930, 40, 180, -420),
+    ("restaurant", "madinah", "Anatolia Grill", "مشويات الأناضول", None, 2, "Turkish", 4.3, 1150, 65, -150, 420),
+    ("restaurant", "madinah", "Biryani Darbar", "برياني دربار", None, 1, "Pakistani and Indian", 4.1, 1580, 25, -450, -950),
+]
+
+# Attractions that take a booking (through the operator), by the Rafeeq guide's place id.
+ATTRACTIONS = [
+    ("makkah", "hira_district", "Hira Cultural District", "حي حراء الثقافي", 21.4548, 39.8597),
+    ("makkah", "architecture", "Two Holy Mosques Architecture Exhibition", "معرض عمارة الحرمين الشريفين", 21.4346, 39.7547),
+    ("makkah", "kiswa", "Kiswa Factory visit", "زيارة مجمع كسوة الكعبة", 21.4348, 39.7564),
+    ("madinah", "dar_madinah", "Dar Al Madinah Museum", "متحف دار المدينة", 24.4766, 39.6876),
+    ("madinah", "seerah", "Museum of the Prophet's Life", "المتحف الدولي للسيرة النبوية", 24.4658, 39.6094),
+    ("madinah", "hejaz_railway", "Hejaz Railway Museum", "متحف سكة حديد الحجاز", 24.4617, 39.6002),
+    ("madinah", "quran_complex", "King Fahd Quran Printing Complex tour", "جولة في مجمع الملك فهد لطباعة المصحف", 24.5164, 39.5414),
+]
+
+# A few requests waiting in the staff app: group, pilgrim index, place name, days ahead, time,
+# nights, people, status, SAR (asked or agreed), note from the pilgrim.
+BOOKINGS = [
+    ("U-ID-0412", 0, "Jakarta Rasa", 0, "20:30", None, 4, "requested", None, "Table for my family, please."),
+    ("U-ID-0412", 4, "Rawdah Gardens Hotel", 1, None, 1, 2, "awaiting_payment", 1300, None),
+    ("U-GB-0044", 2, "Museum of the Prophet's Life", 0, "16:00", None, 3, "confirmed", 0, None),
+    ("U-PK-0318", 1, "Bukhari House", 0, "13:30", None, 6, "requested", None, "Two of us use wheelchairs."),
+    ("U-PK-0318", 5, "Kiswa Factory visit", 3, None, None, 10, "requested", None, "Our whole group, if possible."),
+]
+
+# The room asked for, for the hotel bookings above (by position).
+BOOKING_ROOMS = {
+    1: {"rooms": 1, "room_type": "double", "bed": "king", "access_needs": ["wheelchair_room", "roll_in_shower", "near_elevator"],
+        "extras": ["breakfast", "mosque_view"]},
+}
+
+MOSQUE = {"makkah": (21.4225, 39.8262), "madinah": (24.4672, 39.6111)}
+
+# What the sample hotels offer, by their stars: room types, and help for a disability or old age.
+ROOMS_BY_STARS = {
+    5: ["single", "double", "twin", "triple", "quad", "family", "suite"],
+    4: ["single", "double", "twin", "triple", "quad", "family"],
+    3: ["double", "twin", "triple", "quad"],
+    2: ["double", "triple", "quad"],
+}
+ACCESS_BY_STARS = {
+    5: ["wheelchair_room", "roll_in_shower", "grab_bars", "near_elevator", "low_floor", "wheelchair_loan", "carer_bed",
+        "visual_aids", "hearing_aids"],
+    4: ["wheelchair_room", "grab_bars", "near_elevator", "low_floor", "wheelchair_loan", "carer_bed"],
+    3: ["grab_bars", "near_elevator", "wheelchair_loan"],
+    2: ["near_elevator"],
+}
+
+
+def venues() -> list[dict]:
+    out = []
+    for kind, city, name, name_ar, stars, price, cuisine, rating, count, price_from, north, east in VENUES:
+        lat0, lon0 = MOSQUE[city]
+        out.append({"kind": kind, "city": city, "name": name, "name_ar": name_ar, "stars": stars, "price_level": price,
+                    "cuisine": cuisine, "rating": rating, "rating_count": count, "rating_source": "Sample",
+                    "price_from": price_from, "site_id": None,
+                    "room_types": ROOMS_BY_STARS[stars] if kind == "hotel" else [],
+                    "accessibility": ACCESS_BY_STARS[stars] if kind == "hotel" else [],
+                    "lat": round(lat0 + north / 111_000, 5), "lon": round(lon0 + east / 101_000, 5)})
+    for city, site, name, name_ar, lat, lon in ATTRACTIONS:
+        out.append({"kind": "attraction", "city": city, "name": name, "name_ar": name_ar, "stars": None,
+                    "price_level": None, "cuisine": None, "rating": None, "rating_count": None, "rating_source": None,
+                    "price_from": None, "site_id": site, "lat": lat, "lon": lon, "room_types": [], "accessibility": []})
+    return out
+
+
 def main() -> None:
     rng = random.Random(1448)
     groups, pilgrims, seen = [], [], set()
@@ -232,6 +361,7 @@ def main() -> None:
                 status = "departed"
                 steps = PATH[: PATH.index(stage) + 1] + ["departed"]
             hist = history(steps, arrive, depart, early_exit=early)
+            visa = visa_ends(status if status != "departed" else stage, kind, arrive, depart, i)
             flight = next((f[0] for f in FLIGHTS for g, a, b in f[6] if g == code and a <= i < b), None)
             pilgrims.append({
                 "group_code": code, "full_name": f"{first} {last}",
@@ -239,6 +369,7 @@ def main() -> None:
                 "gender": gender, "date_of_birth": born, "nationality": cc, "passport_no": passport,
                 "phone": None, "status": status, "needs": needs, "history": hist,
                 "language": "en" if cc == "NG" and i % 3 == 0 else LANGUAGE[cc], "flight": flight,
+                "visa_ends_in_days": visa,
             })
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({
@@ -255,6 +386,12 @@ def main() -> None:
                        "team": team, "resolved_after": ra, "resolution": res}
                       for k, pr, g, i, loc, d, by, ago, aa, team, ra, res in INCIDENTS],
         "vitals": vitals(random.Random(1449)),
+        "return_legs": {code: [dict(zip(("flight_number", "from_airport", "to_airport", "time", "minutes"), leg))
+                               for leg in legs] for code, legs in RETURN_LEGS.items()},
+        "venues": venues(),
+        "bookings": [{**dict(zip(("group_code", "pilgrim_index", "venue", "days_ahead", "time", "nights", "people",
+                                  "status", "amount", "note"), b)), **BOOKING_ROOMS.get(i, {})}
+                     for i, b in enumerate(BOOKINGS)],
     }, ensure_ascii=False, indent=1) + "\n")
     print(f"wrote {OUT} — {len(groups)} groups, {len(pilgrims)} pilgrims, {len(FLIGHTS)} flights, {len(RESOURCES)} shifts, {len(INCIDENTS)} incidents")
 

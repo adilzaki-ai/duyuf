@@ -50,9 +50,15 @@ database and ports. Never touch Sky Logics from here.
   through the viewer with the same instructions, read from prompts.py by
   `frontend/src/ai/viewerAi.ts`. The Ask anywhere bar (`features/ai/AskBar.tsx`)
   finds screens, groups, flights and pilgrims, and sends questions to the analyst.
+- Start-up page: `features/cover/Cover.tsx` (every time in the demo, once a
+  browser session otherwise, never in tests). Two logo spots at the top:
+  Vision 2030 (top left, both languages) and the Ministry of Hajj and Umrah
+  (centre). They show the official files ONLY if dropped into
+  `design/partners/` (vision2030.*, mohu.*) with written permission; otherwise
+  a line of text. Never draw an imitation of either logo.
 - Look: turquoise tokens in `design/global.css`; light by default, a dark
   operations room via `html[data-theme]` (`design/theme.ts`, the header switch).
-  Mark: `design/DuyufMark.tsx` (an open arch with a crescent).
+  Mark: `design/DuyufMark.tsx` (a doorway of welcome with two golden arches, the Two Holy Mosques, under a crescent); `DuyufLogo` adds the name in both scripts.
 - Ask Rafeeq (`rafeeq/ask.py`): one Claude call per question, structured
   {answer, action}; the pilgrim's own page as words (first name, group,
   meeting point, states not numbers; never passport, birth date, surname,
@@ -63,6 +69,38 @@ database and ports. Never touch Sky Logics from here.
 - Rafeeq's look: the mark is `rafeeq/Logo.tsx`; Reem Kufi is for the name
   only. The cover (`Cover.tsx`) shows on a card's first opening only, never
   in front of SOS on later visits.
+- Weather (`weather/`): Open-Meteo forecast for Makkah and Madinah, fetched every
+  30 min by `core/jobs.py` `weather_forever` and kept in memory (no table, no
+  pilgrim data sent). `GET /v1/rafeeq/weather`. Heat/UV bands and good-to-walk
+  hours in `weather/rules.py` ↔ `frontend/src/rafeeq/weatherRules.ts` (a test
+  reads the Python). `DUYUF_WEATHER_URL=off` turns the fetch off. The sample
+  shows typical weather for the month, marked as a sample.
+- Visa end date: `pilgrim.visa_expires_on` (0015), staff-entered or CSV column
+  `visa_expires_on`; never guessed. Rafeeq counts the days on the phone
+  (`rafeeq/visaDays.ts`, levels PROPOSED) and warns when the group leaves after it.
+- Visit the sites (`rafeeq/guide/`): 27 places, `sites.ts` (coordinates,
+  minutes, indoor), the guide per language in `en.ts`/`ar.ts`/… (item for item,
+  tested; DRAFT for a licensed guide), photos from Wikimedia Commons in
+  `guide/photos/` with `credits.ts` (CC BY/BY-SA need the credit shown). Planner
+  in `rafeeq/planner.ts`; the plan lives on the phone only. Screen words in
+  `rafeeq/wordsTrips.ts`. On macOS `Visa.tsx` and `visa.ts` are the same file:
+  logic files have different names.
+- Flights home and bookings (0016, `routers/bookings.py`): `return_leg` per group
+  (staff PUT the whole list, in flying order); `venue` = the operator's hotels,
+  restaurants and bookable attractions (a rating must name its `rating_source`,
+  never invented for a real place; hotel stars are the official 1–5);
+  `booking` + `booking_event`. Moves in `bookings/flow.py` ↔ `domain/bookings.ts`
+  (test reads the Python). Pilgrim cancels until confirmed; then only staff.
+  `payments/`: NO provider signed — demonstration operators get a test payment
+  (card 4242 4242 4242 4242, nothing charged); real operators can only confirm
+  "pay at the place" until a provider is chosen. Rafeeq: reminders and the .ics
+  calendar file in `rafeeq/flightsHome.ts`, screens `GoingHome.tsx` and
+  `Stay.tsx`, words in `wordsStay.ts`. Scopes: booking:read/write, venue:write.
+  Hotel rooms (0017): venue.room_types/accessibility (what the hotel has; empty
+  room_types = all offered); booking.rooms/room_type/bed/access_needs/extras.
+  Lists in `bookings/flow.py` ↔ `rafeeq/rooms.ts` (test reads the Python). The
+  platform refuses a room type the hotel lacks and rooms that sleep fewer than
+  the party; a pilgrim may ask for any accessibility need (staff check).
 - AI analyst (`analyst/`): aggregates only, agreed with Adil. Its tools never
   return names, passports, birth dates, phones or incident descriptions;
   `test_no_tool_lets_a_person_out` enforces it. Key in `backend/.env.local`.

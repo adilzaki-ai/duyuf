@@ -21,20 +21,23 @@ from fastapi.responses import JSONResponse
 
 from .core.auth import Identity, identity
 from .core.db import PoolUnavailable, healthy
-from .core.jobs import run_forever
-from .routers import (ai, analyst, arrivals, groups, health, imports, incidents, overview, pilgrims, rafeeq,
+from .core.jobs import run_forever, weather_forever
+from .routers import (ai, analyst, arrivals, bookings, groups, health, imports, incidents, overview, pilgrims, rafeeq,
                       resources, session, staff)
 
-VERSION = "0.10.0"
+VERSION = "0.12.0"
 
 @asynccontextmanager
 async def _lifespan(_: FastAPI):
     # Sends automatic medical alerts whose countdown ran out (core/jobs.py).
     jobs = asyncio.create_task(run_forever())
+    # Keeps the Makkah and Madinah forecast fresh for Rafeeq's weather report (weather/forecast.py).
+    weather = asyncio.create_task(weather_forever())
     try:
         yield
     finally:
         jobs.cancel()
+        weather.cancel()
 
 
 app = FastAPI(title="Duyuf Platform API", version=VERSION, lifespan=_lifespan,
@@ -90,6 +93,7 @@ app.include_router(staff.router)
 app.include_router(rafeeq.router)
 app.include_router(health.router)
 app.include_router(ai.router)
+app.include_router(bookings.router)
 
 
 @app.get("/health", tags=["platform"])

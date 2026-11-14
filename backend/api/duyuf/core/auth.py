@@ -58,17 +58,23 @@ LOCKOUT_WINDOW = timedelta(minutes=15)
 # administrators read them. A medic otherwise follows pilgrims and works
 # incidents. device:write is for a wearable maker's system sending readings
 # with a key; give such a key to an administrator account kept for it.
+# Anyone working with pilgrims answers their booking requests; the list of
+# places (and their ratings) is kept by supervisors and administrators.
 ROLE_SCOPES: dict[str, frozenset[str]] = {
     "administrator": frozenset({"group:read", "group:write", "pilgrim:read", "pilgrim:write",
                                 "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write",
                                 "incident:read", "incident:write", "analyst:ask", "staff:manage",
-                                "rafeeq:issue", "health:read", "device:write"}),
+                                "rafeeq:issue", "health:read", "device:write", "booking:read", "booking:write",
+                                "venue:write"}),
     "supervisor": frozenset({"group:read", "group:write", "pilgrim:read", "pilgrim:write",
                              "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write",
-                             "incident:read", "incident:write", "analyst:ask", "rafeeq:issue"}),
+                             "incident:read", "incident:write", "analyst:ask", "rafeeq:issue",
+                             "booking:read", "booking:write", "venue:write"}),
     "staff": frozenset({"group:read", "pilgrim:read", "pilgrim:status", "flight:read",
-                        "incident:read", "incident:write", "analyst:ask", "rafeeq:issue"}),
-    "viewer": frozenset({"group:read", "pilgrim:read", "flight:read", "incident:read", "analyst:ask"}),
+                        "incident:read", "incident:write", "analyst:ask", "rafeeq:issue",
+                        "booking:read", "booking:write"}),
+    "viewer": frozenset({"group:read", "pilgrim:read", "flight:read", "incident:read", "analyst:ask",
+                         "booking:read"}),
     "medic": frozenset({"group:read", "pilgrim:read", "flight:read", "incident:read", "incident:write",
                         "health:read"}),
 }

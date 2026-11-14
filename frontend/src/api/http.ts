@@ -36,6 +36,10 @@ export class HttpClient {
     return this.request<T>("POST", path, undefined, body, timeoutMs);
   }
 
+  put<T>(path: string, body?: unknown) {
+    return this.request<T>("PUT", path, undefined, body);
+  }
+
   patch<T>(path: string, body?: unknown) {
     return this.request<T>("PATCH", path, undefined, body);
   }

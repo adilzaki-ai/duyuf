@@ -22,7 +22,7 @@ router = APIRouter(prefix="/v1/groups", tags=["groups"])
 
 MAX_ROWS = 2000
 COLUMNS = ("full_name", "full_name_ar", "gender", "date_of_birth", "nationality",
-           "passport_no", "phone", "language", "needs")
+           "passport_no", "phone", "language", "needs", "visa_expires_on")
 
 _GENDER = {"male": "male", "m": "male", "ذكر": "male", "female": "female", "f": "female", "أنثى": "female"}
 
@@ -42,6 +42,7 @@ class Row(BaseModel):
     phone: str | None = None
     language: str | None = Field(default=None, pattern=r"^[a-z]{2}$")
     needs: list[str] = []
+    visa_expires_on: date | None = None
 
     @field_validator("*", mode="before")
     @classmethod
@@ -71,6 +72,22 @@ class Row(BaseModel):
                 raise ValueError("not a likely birth date")
             return born
         raise ValueError("a date like 1960-03-02 or 02/03/1960")
+
+    @field_validator("visa_expires_on", mode="before")
+    @classmethod
+    def _visa(cls, v):
+        v = _blank(v)
+        if v is None or isinstance(v, date):
+            return v
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+            try:
+                ends = datetime.strptime(str(v).strip(), fmt).date()
+            except ValueError:
+                continue
+            if ends.year < 2000:
+                raise ValueError("not a likely visa date")
+            return ends
+        raise ValueError("a date like 2026-12-20 or 20/12/2026")
 
     @field_validator("nationality", mode="before")
     @classmethod
@@ -157,10 +174,10 @@ def import_pilgrims(group_id: str, body: ImportBody, who: Identity = Depends(req
             for _, r in good:
                 pid = conn.execute(
                     """INSERT INTO pilgrim (group_id, full_name, full_name_ar, gender, date_of_birth, nationality,
-                           passport_no, phone, language, needs)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+                           passport_no, phone, language, needs, visa_expires_on)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
                     (group_id, r.full_name, r.full_name_ar, r.gender, r.date_of_birth, r.nationality,
-                     r.passport_no, r.phone, r.language, r.needs)).fetchone()["id"]
+                     r.passport_no, r.phone, r.language, r.needs, r.visa_expires_on)).fetchone()["id"]
                 conn.execute("INSERT INTO pilgrim_event (pilgrim_id, to_status, note, actor) "
                              "VALUES (%s, 'registered', 'Imported from a spreadsheet', %s)", (pid, who.display_name))
     return {"rows": len(body.rows), "valid": valid, "errors": errors, "saved": save}

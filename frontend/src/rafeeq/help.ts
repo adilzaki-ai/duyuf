@@ -7,7 +7,7 @@
 export const RAFEEQ_LANGUAGES = ["en", "ar", "id", "ur", "tr", "fr"] as const;
 export type RafeeqLang = (typeof RAFEEQ_LANGUAGES)[number];
 
-export const HELP_KINDS = ["sos", "lost", "heat"] as const;
+export const HELP_KINDS = ["sos", "lost", "heat", "medical"] as const;
 export type HelpKind = (typeof HELP_KINDS)[number];
 
 /** Each language in its own words, for the chooser. */

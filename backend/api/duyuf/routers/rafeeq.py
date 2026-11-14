@@ -25,6 +25,7 @@ from ..core.auth import CardHolder, Identity, card_holder, hash_key, new_card_to
 from ..core.db import tenant_session
 from ..health import record
 from ..rafeeq import ask as ask_engine
+from ..weather import forecast
 from ..rafeeq.help import (ACTOR, CALLS_PER_HOUR, FINE_NOTE, HELP, LANGUAGES, PRESSED_AGAIN,
                            description)
 
@@ -126,6 +127,7 @@ def _page(conn, card: CardHolder) -> dict:
     (and those closed in the last 12 hours, so they see the answer)."""
     row = conn.execute(
         """SELECT p.full_name, p.full_name_ar, p.group_id::text AS gid, g.code AS group_code, g.name AS group_name,
+                  p.status, p.visa_expires_on, g.departure_date AS leaving_on,
                   g.leader_name, g.leader_phone, t.name AS operator, t.name_ar AS operator_ar,
                   CASE WHEN g.meeting_lat IS NOT NULL THEN
                        jsonb_build_object('name', g.meeting_name, 'lat', g.meeting_lat, 'lon', g.meeting_lon) END AS meeting
@@ -138,12 +140,16 @@ def _page(conn, card: CardHolder) -> dict:
              ORDER BY (status = 'resolved'), opened_at DESC LIMIT 5""", (card.pilgrim_id,)).fetchall()
     agreed = record.consent(conn, card.pilgrim_id)
     place = record.last_place(conn, card.pilgrim_id) if agreed["location"] else None
-    group = record.group_centre(conn, row.pop("gid"), card.pilgrim_id)
+    gid = row.pop("gid")
+    group = record.group_centre(conn, gid, card.pilgrim_id)
+    legs = conn.execute(
+        """SELECT seq, flight_number, from_airport, to_airport, departs_at, arrives_at FROM return_leg
+            WHERE group_id = %s ORDER BY seq""", (gid,)).fetchall()
     recent = conn.execute(
         """SELECT at, heart_rate, temperature::float AS temperature FROM vital_reading
             WHERE pilgrim_id = %s AND at > now() - interval '2 hours' ORDER BY at DESC LIMIT 12""",
         (card.pilgrim_id,)).fetchall() if agreed["health"] else []
-    return {**row, "group_now": group, "recent": recent,
+    return {**row, "group_now": group, "recent": recent, "return_legs": legs,
             "language": card.language, "is_demo": card.is_demo, "calls": calls, "consent": agreed,
             "health": record.state(conn, card.pilgrim_id) if agreed["health"] else None,
             "alert": record.counting(conn, card.pilgrim_id) if agreed["health"] else None,
@@ -219,6 +225,16 @@ def say_fine(incident_id: str, card: CardHolder = Depends(card_holder)):
             conn.execute("INSERT INTO incident_event (incident_id, kind, note, actor) VALUES (%s, 'note', %s, %s)",
                          (incident_id, FINE_NOTE, ACTOR))
         return _page(conn, card)
+
+
+@router.get("/v1/rafeeq/weather")
+def weather(card: CardHolder = Depends(card_holder)):
+    """Makkah and Madinah: now, the next 24 hours, four days, and when it is good to walk.
+    The same for every pilgrim; nothing about them is sent to the forecast."""
+    try:
+        return forecast.report()
+    except forecast.Unavailable as exc:
+        raise HTTPException(503, f"the weather is not available just now: {exc}")
 
 
 # ---- health and place, with consent ----
@@ -334,6 +350,11 @@ def situation(page: dict) -> dict:
                                       "water": h["hydration"]},
         "open_calls_for_help": [c["kind"] for c in page["calls"] if c["status"] != "resolved"],
         "medical_countdown_running": bool(page.get("alert")),
+        "city_now": {"in_makkah": "Makkah", "in_madinah": "Madinah"}.get(page.get("status")),
+        "visa_ends_on": page.get("visa_expires_on"),
+        "group_leaves_on": page.get("leaving_on"),
+        "flights_home": [f"{x['flight_number']} {x['from_airport']}→{x['to_airport']} {x['departs_at'].astimezone(KSA):%a %d %b %H:%M} Saudi time"
+                         for x in page.get("return_legs") or []],
     }
 
 

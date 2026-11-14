@@ -46,7 +46,7 @@ describe("Rafeeq health", () => {
     expect(count).toHaveTextContent(/Calling medical help in (29|30) seconds\./);
     await userEvent.click(within(count).getByRole("button", { name: "I AM OK" }));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /SOS/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Alert my group/ })).toBeInTheDocument();
   });
 
   it("a countdown nobody stops becomes a medical call", async () => {
