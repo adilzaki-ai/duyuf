@@ -119,3 +119,17 @@ def advice(body: AdviceIn, who: Identity = Depends(require("flight:read"))):
             x = None
         items.append({**it, "extra": x, "of": g})
     return {"summary": out.get("summary"), "items": items, "gaps": situation["gaps"], "model": out["model"]}
+
+
+@router.post("/dispatch")
+def dispatch_note(body: Lang, who: Identity = Depends(require("roster:read"))):
+    """The dispatcher's plan explained for the supervisor who approves it."""
+    with tenant_session(who.tenant_id) as conn:
+        situation = situations.dispatch(conn)
+    if not situation["gaps"]:
+        return {"summary": None, "items": [], "model": None}
+    out = _call(who, "dispatch", prompts.DISPATCH, prompts.DISPATCH_SCHEMA, body.language, situation,
+                "Explain this plan to the supervisor who will approve it.")
+    known = {g["gap"] for g in situation["gaps"]}
+    return {"summary": out.get("summary"), "items": [i for i in out.get("items", []) if i.get("gap") in known],
+            "model": out["model"]}

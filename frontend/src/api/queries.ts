@@ -19,6 +19,9 @@ import type {
   NewReturnLeg,
   NewVenue,
   VenueChange,
+  DispatchView,
+  NewWorker,
+  WorkerChange,
 } from "../domain/types";
 import type { StaffAction } from "../domain/bookings";
 import type { RafeeqLang } from "../rafeeq/help";
@@ -403,4 +406,45 @@ export function useDecideBooking(id: string) {
       void qc.invalidateQueries({ queryKey: ["bookings"] });
     },
   });
+}
+
+/* ---- the roster and the dispatcher ---- */
+
+export function useWorkers() {
+  const { source } = useSession();
+  return useQuery({ queryKey: ["workers"], queryFn: () => source.workers() });
+}
+
+export function useSaveWorker() {
+  const { source } = useSession();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (x: { id?: string; w: NewWorker | WorkerChange }) => (x.id ? source.updateWorker(x.id, x.w as WorkerChange) : source.addWorker(x.w as NewWorker)),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["workers"] }),
+  });
+}
+
+export function useDispatch() {
+  const { source } = useSession();
+  /* answers come in by themselves: look often (the sample answers within seconds) */
+  return useQuery({ queryKey: ["dispatch"], queryFn: () => source.dispatch(), refetchInterval: source.kind === "mock" ? 3_000 : 15_000 });
+}
+
+/** One step of the dispatcher; the board, shifts and roster follow. */
+export function useDispatchStep() {
+  const { source } = useSession();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (step: () => Promise<DispatchView>) => step(),
+    onSuccess: (v) => {
+      qc.setQueryData(["dispatch"], v);
+      for (const k of ["arrivals", "shifts", "workers", "what-if"]) void qc.invalidateQueries({ queryKey: [k] });
+    },
+    meta: { source },
+  });
+}
+
+export function useAiDispatch() {
+  const { source } = useSession();
+  return useMutation({ mutationFn: (language: "en" | "ar") => source.aiDispatch(language) });
 }

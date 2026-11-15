@@ -18,7 +18,7 @@ from ..core.db import tenant_session
 
 router = APIRouter(prefix="/v1/resources", tags=["resources"])
 
-_COLS = "id::text, airport, kind, language, quantity, starts_at, ends_at, note, created_by, created_at"
+_COLS = "id::text, airport, kind, language, quantity, starts_at, ends_at, note, created_by, created_at, source"
 
 
 class ShiftIn(BaseModel):

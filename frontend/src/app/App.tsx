@@ -14,6 +14,7 @@ import { AnalystPage } from "../features/analyst/AnalystPage";
 import { ArrivalsPage } from "../features/arrivals/ArrivalsPage";
 import { FlightPage } from "../features/arrivals/FlightPage";
 import { ResourcesPage } from "../features/arrivals/ResourcesPage";
+import { CoverGapsPage } from "../features/dispatch/CoverGapsPage";
 import { BookingsPage } from "../features/bookings/BookingsPage";
 import { Cover, coverFirst, coverSeen } from "../features/cover/Cover";
 import { GroupPage } from "../features/groups/GroupPage";
@@ -96,6 +97,7 @@ export function App({ start = startDataSource }: { start?: Start }) {
                 <Route index element={<OverviewPage />} />
                 <Route path="arrivals" element={<ArrivalsPage />} />
                 <Route path="arrivals/resources" element={<ResourcesPage />} />
+                <Route path="arrivals/cover" element={<CoverGapsPage />} />
                 <Route path="arrivals/:id" element={<FlightPage />} />
                 <Route path="groups" element={<GroupsPage />} />
                 <Route path="groups/:id" element={<GroupPage />} />

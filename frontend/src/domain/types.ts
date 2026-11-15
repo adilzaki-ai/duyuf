@@ -23,7 +23,10 @@ export type Scope =
   | "device:write"
   | "booking:read"
   | "booking:write"
-  | "venue:write";
+  | "venue:write"
+  | "roster:read"
+  | "roster:write"
+  | "dispatch:approve";
 
 export type Role = "administrator" | "supervisor" | "staff" | "viewer" | "medic";
 
@@ -231,6 +234,8 @@ export interface LoadRow {
   need: Resources;
   have: Resources;
   short: Shortfall[];
+  /** asked from the roster but not yet said yes: covered on paper, not confirmed */
+  waiting?: Shortfall[];
 }
 
 export interface Arrivals {
@@ -256,6 +261,8 @@ export interface Shift {
   note: string | null;
   created_by: string;
   created_at: string;
+  /** manual: typed in by staff; roster: filled by asking people from the roster */
+  source?: "manual" | "roster";
 }
 
 export interface NewShift {
@@ -730,4 +737,90 @@ export interface StaffBooking {
   group_code: string;
   group_id: string;
   history?: { kind: string; note: string | null; actor: string; at: string }[];
+}
+
+/* ---- the roster and the dispatcher ---- */
+
+export interface Worker {
+  id: string;
+  name: string;
+  name_ar: string | null;
+  phone: string;
+  roles: import("./dispatch").Role[];
+  languages: string[];
+  airports: string[];
+  max_hours_week: number;
+  active: boolean;
+  note: string | null;
+  /** requests they hold now (asked, accepted, there) */
+  holding: number;
+}
+
+export type NewWorker = Omit<Worker, "id" | "holding">;
+export type WorkerChange = Partial<NewWorker>;
+
+export interface DispatchSettings {
+  mode: import("./dispatch").DispatchMode;
+  horizon_hours: number;
+  answer_minutes: number;
+  updated_by: string | null;
+  updated_at: string | null;
+}
+
+export interface DispatchPlanItem {
+  airport: string;
+  kind: import("./dispatch").Role;
+  language: string | null;
+  start: string;
+  end: string;
+  short: number;
+  shift_id: string | null;
+  ask: string[];
+  missing: number;
+  people: { id: string; name: string }[];
+}
+
+export interface DispatchPlan {
+  id: string;
+  items: DispatchPlanItem[];
+  made_by: string;
+  made_at: string;
+}
+
+export interface DispatchRequest {
+  id: string;
+  status: import("./dispatch").RequestStatus;
+  message: string;
+  asked_by: string;
+  asked_at: string;
+  answer_by: string;
+  sent_at: string | null;
+  answered_at: string | null;
+  arrived_at: string | null;
+  worker_id: string;
+  name: string;
+  name_ar: string | null;
+  phone: string;
+  shift_id: string;
+  airport: string;
+  kind: import("./dispatch").Role;
+  language: string | null;
+  starts_at: string;
+  ends_at: string;
+  /** the personal link; null once the shift is over */
+  link: string | null;
+}
+
+export interface DispatchView {
+  settings: DispatchSettings;
+  plan: DispatchPlan | null;
+  requests: DispatchRequest[];
+  /** the SMS/WhatsApp provider sending requests; null: staff send them */
+  provider: string | null;
+}
+
+export interface DispatchNote {
+  summary: string | null;
+  items: { gap: number; note: string }[];
+  model: string | null;
 }

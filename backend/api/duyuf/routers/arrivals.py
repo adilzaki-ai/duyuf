@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from psycopg.types.json import Jsonb
 
 from ..arrivals.brief import KSA, SLOT_HOURS, brief, slot_start, state, waves
-from ..arrivals.plan import load
+from ..arrivals.plan import load, on_shift, short_of
 from ..core.auth import Identity, require
 from ..core.db import tenant_session
 from ..pilgrims.status import refusal
@@ -106,10 +106,17 @@ def _on_board(f: dict, now: datetime, until: datetime) -> bool:
             or (f["landed_at"] is not None and f["landed_at"] >= now - LANDED_GRACE))
 
 
-def _board(conn, hours: int, delays: dict[str, int] | None = None, extra: list[dict] | None = None) -> dict:
+def _board(conn, hours: int, delays: dict[str, int] | None = None, extra: list[dict] | None = None,
+           roster_as_planned: bool = False) -> dict:
     """The arrivals board. With `delays` (flight id → minutes later) and `extra`
     resources (for the whole window), the same board as it would be: nothing
-    is written."""
+    is written.
+
+    A shift filled from the roster counts the people still holding it (asked,
+    accepted or there), not the number it asked for, so a "no" shows as a gap
+    again; each block also says how much is only asked for, not yet confirmed
+    (`waiting`). `roster_as_planned`: count roster shifts at the number they
+    asked for, for the dispatcher, which follows up their people itself."""
     delays = delays or {}
     now = _now(conn)
     until = now + timedelta(hours=hours)
@@ -124,11 +131,27 @@ def _board(conn, hours: int, delays: dict[str, int] | None = None, extra: list[d
     flights = sorted((f for f in flights if _on_board(f, now, until)), key=lambda f: (f["expected_at"], f["number"]))
 
     shifts = conn.execute(
-        "SELECT airport, kind, language, quantity, starts_at, ends_at FROM resource_shift "
-        "WHERE ends_at > %s AND starts_at < %s", (now - timedelta(hours=SLOT_HOURS), until)).fetchall()
+        """SELECT s.airport, s.kind, s.language, s.starts_at, s.ends_at, s.source, s.quantity AS planned,
+                  CASE WHEN s.source = 'roster' THEN LEAST(s.quantity, (SELECT count(*) FROM assignment a
+                       WHERE a.shift_id = s.id AND a.status IN ('asked', 'accepted', 'arrived')))::int
+                       ELSE s.quantity END AS holding,
+                  CASE WHEN s.source = 'roster' THEN LEAST(s.quantity, (SELECT count(*) FROM assignment a
+                       WHERE a.shift_id = s.id AND a.status IN ('accepted', 'arrived')))::int
+                       ELSE s.quantity END AS confirmed
+             FROM resource_shift s WHERE s.ends_at > %s AND s.starts_at < %s""",
+        (now - timedelta(hours=SLOT_HOURS), until)).fetchall()
     forever = (now - timedelta(days=3650), now + timedelta(days=3650))
-    shifts += [{**x, "starts_at": forever[0], "ends_at": forever[1]} for x in (extra or [])]
-    rows = load(flights, shifts, now, hours)
+    extra_rows = [{**x, "starts_at": forever[0], "ends_at": forever[1]} for x in (extra or [])]
+    counted = [{**x, "quantity": x["planned"] if roster_as_planned else x["holding"]} for x in shifts] + extra_rows
+    sure = [{**x, "quantity": x["confirmed"]} for x in shifts] + extra_rows
+    rows = load(flights, counted, now, hours)
+    block_end = timedelta(hours=SLOT_HOURS)
+    for r in rows:
+        # asked for, but not yet said yes: what the confirmed count is still short of, beyond the gap
+        sure_short = short_of(r["need"], on_shift(sure, r["airport"], r["start"], r["start"] + block_end))
+        gap = {(x["kind"], x["language"]): x["short"] for x in r["short"]}
+        r["waiting"] = [{**x, "short": x["short"] - gap.get((x["kind"], x["language"]), 0)}
+                        for x in sure_short if x["short"] > gap.get((x["kind"], x["language"]), 0)]
     gap_at = {(r["airport"], r["start"]) for r in rows if r["short"]}
     first = slot_start(now)
     block = timedelta(hours=SLOT_HOURS)

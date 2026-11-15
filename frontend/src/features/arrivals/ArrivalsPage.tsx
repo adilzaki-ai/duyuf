@@ -186,6 +186,9 @@ export function ArrivalsPage() {
               </button>
             ))}
           </div>
+          <Link to="/arrivals/cover" className={u.button}>
+            {t("Cover the gaps")}
+          </Link>
           <Link to="/arrivals/resources" className={`${u.button} ${u.quiet}`}>
             {t("Resources")}
           </Link>

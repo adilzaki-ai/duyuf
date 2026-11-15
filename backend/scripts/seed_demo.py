@@ -50,7 +50,9 @@ def seed(reset: bool = False) -> dict:
                                 (tid,)).fetchone()["n"]
         if existing and not reset:
             raise SystemExit(f"{op['slug']} already holds {existing} groups; pass --reset to reload")
-        for table in ("health_alert", "vital_reading", "water_log", "pilgrim_location", "pilgrim_consent",
+        for table in ("assignment", "dispatch_plan", "dispatch_setting", "worker",
+                      "booking_event", "booking", "venue", "return_leg",
+                      "health_alert", "vital_reading", "water_log", "pilgrim_location", "pilgrim_consent",
                       "incident_event", "incident", "rafeeq_card", "pilgrim_event", "pilgrim", "flight_event", "flight",
                       "pilgrim_group", "resource_shift"):
             conn.execute(f"""DELETE FROM {table} x USING tenant t
@@ -174,6 +176,14 @@ def seed(reset: bool = False) -> dict:
             if b["status"] != "requested":
                 conn.execute("""INSERT INTO booking_event (tenant_id, booking_id, kind, actor, at)
                                 VALUES (%s, %s, %s, 'Demo load', now() - interval '20 minutes')""", (tid, bid, b["status"]))
+        # The roster, for the dispatcher (which starts on Approve: it proposes, a supervisor approves).
+        # The demo looks three days ahead, so its first plan has both kinds of gap: one the roster covers, one it cannot.
+        conn.execute("INSERT INTO dispatch_setting (tenant_id, mode, horizon_hours, updated_by) "
+                     "VALUES (%s, 'approve', 72, 'Demo load')", (tid,))
+        for w in data.get("workers", []):
+            conn.execute("""INSERT INTO worker (tenant_id, name, name_ar, phone, roles, languages, airports)
+                            VALUES (%(t)s, %(name)s, %(name_ar)s, %(phone)s, %(roles)s, %(languages)s, %(airports)s)""",
+                         {**w, "t": tid})
         # Health readings and places, from pilgrims who agreed; times counted back from now.
         for v in data.get("vitals", []):
             pid = by_place[(v["group_code"], v["pilgrim_index"])]

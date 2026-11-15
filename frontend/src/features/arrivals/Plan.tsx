@@ -28,16 +28,21 @@ export function blockName(start: string, hours: number): string {
   return `${day}${sep()}${ltr(`${ksaTime(from)}–${ksaTime(new Date(from.getTime() + hours * 3_600_000))}`)}`;
 }
 
-function Cell({ need, have }: { need: number; have: number }) {
+/** `waiting`: asked from the roster, not yet said yes. Covered on paper, not confirmed. */
+function Cell({ need, have, waiting = 0 }: { need: number; have: number; waiting?: number }) {
   if (!need) return <span className={u.muted}>—</span>;
   const short = need > have;
   return (
     <span className={short ? a.short : undefined}>
       {fmtNum(need)} / {fmtNum(have)}
       {short && <span className={a.shortNote}>{t("short {n}", { n: need - have })}</span>}
+      {!short && waiting > 0 && <span className={a.waitNote}>{t("{n} not yet confirmed", { n: waiting })}</span>}
     </span>
   );
 }
+
+const waitOf = (r: LoadRow, kind: ResourceKind, language: string | null = null) =>
+  (r.waiting ?? []).find((x) => x.kind === kind && x.language === language)?.short ?? 0;
 
 /** Need against what is on shift, one row per airport and block with a flight landing. */
 export function LoadTable({ rows, slotHours }: { rows: LoadRow[]; slotHours: number }) {
@@ -66,10 +71,10 @@ export function LoadTable({ rows, slotHours }: { rows: LoadRow[]; slotHours: num
                   {r.flights.join(", ")}
                 </td>
                 <td>
-                  <Cell need={r.need.wheelchair} have={r.have.wheelchair} />
+                  <Cell need={r.need.wheelchair} have={r.have.wheelchair} waiting={waitOf(r, "wheelchair")} />
                 </td>
                 <td>
-                  <Cell need={r.need.bus} have={r.have.bus} />
+                  <Cell need={r.need.bus} have={r.have.bus} waiting={waitOf(r, "bus")} />
                 </td>
                 <td>
                   {langs.length === 0 ? (
@@ -77,7 +82,7 @@ export function LoadTable({ rows, slotHours }: { rows: LoadRow[]; slotHours: num
                   ) : (
                     langs.map((l) => (
                       <span key={l} className={a.langNeed}>
-                        {languageName(l)} <Cell need={r.need.interpreter[l]} have={r.have.interpreter[l] ?? 0} />
+                        {languageName(l)} <Cell need={r.need.interpreter[l]} have={r.have.interpreter[l] ?? 0} waiting={waitOf(r, "interpreter", l)} />
                       </span>
                     ))
                   )}

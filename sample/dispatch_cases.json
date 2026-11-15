@@ -1,0 +1,45 @@
+{
+  "note": "Shared cases for the dispatch rule: backend/api/duyuf/dispatch/planner.py and frontend/src/domain/dispatch.ts both run these.",
+  "cases": [
+    {
+      "name": "fewest hours first, right language and airport, and what nobody covers",
+      "workers": [
+        { "id": "a", "name": "Amina", "roles": ["interpreter"], "languages": ["ur", "en"], "airports": ["JED"], "max_hours_week": 48, "active": true },
+        { "id": "b", "name": "Bilal", "roles": ["interpreter"], "languages": ["ur"], "airports": ["JED", "MED"], "max_hours_week": 48, "active": true },
+        { "id": "c", "name": "Chen", "roles": ["interpreter"], "languages": ["ur"], "airports": ["MED"], "max_hours_week": 48, "active": true },
+        { "id": "d", "name": "Dalia", "roles": ["wheelchair"], "languages": [], "airports": ["JED"], "max_hours_week": 48, "active": true },
+        { "id": "e", "name": "Emre", "roles": ["wheelchair"], "languages": [], "airports": ["JED"], "max_hours_week": 48, "active": false }
+      ],
+      "busy": {},
+      "hours": { "a": 20, "b": 4 },
+      "gaps": [
+        { "airport": "JED", "kind": "interpreter", "language": "ur", "start": "2026-11-20T06:00:00+03:00", "end": "2026-11-20T12:00:00+03:00", "short": 1 },
+        { "airport": "JED", "kind": "wheelchair", "language": null, "start": "2026-11-20T06:00:00+03:00", "end": "2026-11-20T12:00:00+03:00", "short": 2 },
+        { "airport": "JED", "kind": "interpreter", "language": "ha", "start": "2026-11-20T06:00:00+03:00", "end": "2026-11-20T12:00:00+03:00", "short": 1 }
+      ],
+      "expect": [
+        { "kind": "interpreter", "language": "ha", "ask": [], "missing": 1 },
+        { "kind": "interpreter", "language": "ur", "ask": ["b"], "missing": 0 },
+        { "kind": "wheelchair", "language": null, "ask": ["d"], "missing": 1 }
+      ]
+    },
+    {
+      "name": "a person already busy then is skipped, a pick counts against the next gap, and the weekly limit holds",
+      "workers": [
+        { "id": "a", "name": "Amina", "roles": ["wheelchair"], "languages": [], "airports": ["MED"], "max_hours_week": 48, "active": true },
+        { "id": "b", "name": "Bilal", "roles": ["wheelchair"], "languages": [], "airports": ["MED"], "max_hours_week": 10, "active": true },
+        { "id": "c", "name": "Chen", "roles": ["wheelchair"], "languages": [], "airports": ["MED"], "max_hours_week": 48, "active": true }
+      ],
+      "busy": { "c": [["2026-11-20T09:00:00+03:00", "2026-11-20T15:00:00+03:00"]] },
+      "hours": { "b": 6 },
+      "gaps": [
+        { "airport": "MED", "kind": "wheelchair", "language": null, "start": "2026-11-20T06:00:00+03:00", "end": "2026-11-20T12:00:00+03:00", "short": 2 },
+        { "airport": "MED", "kind": "wheelchair", "language": null, "start": "2026-11-20T12:00:00+03:00", "end": "2026-11-20T18:00:00+03:00", "short": 1, "exclude": ["a"] }
+      ],
+      "expect": [
+        { "kind": "wheelchair", "language": null, "ask": ["a"], "missing": 1 },
+        { "kind": "wheelchair", "language": null, "ask": [], "missing": 1 }
+      ]
+    }
+  ]
+}

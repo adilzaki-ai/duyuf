@@ -18,13 +18,16 @@ const show = (node: ReactNode) => root.render(<StrictMode>{node}</StrictMode>);
  */
 const path = location.pathname.slice(import.meta.env.BASE_URL.length - 1);
 const isRafeeq = () => /^\/r\/?$/.test(path) || location.hash.startsWith("#rfq_") || el.dataset.app === "rafeeq";
+/* /w: the page a person opens from a request to cover a shift (#wk_…) */
+const isWork = () => /^\/w\/?$/.test(path) || location.hash.startsWith("#wk_") || el.dataset.app === "work";
 
-let showing: "rafeeq" | "staff" | null = null;
+let showing: "rafeeq" | "work" | "staff" | null = null;
 function open() {
-  const want = isRafeeq() ? "rafeeq" : "staff";
+  const want = isWork() ? "work" : isRafeeq() ? "rafeeq" : "staff";
   if (want === showing) return;
   showing = want;
   if (want === "rafeeq") void import("./rafeeq/RafeeqApp").then(({ RafeeqApp }) => show(<RafeeqApp />));
+  else if (want === "work") void import("./work/WorkApp").then(({ WorkApp }) => show(<WorkApp />));
   else void import("./app/App").then(({ App }) => show(<App />));
 }
 open();

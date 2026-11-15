@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { BOOKING_LABELS_EN } from "../../domain/bookings";
 import { EVENT } from "../../features/bookings/BookingsPage";
 import { ROOM_LINES } from "../../rafeeq/rooms";
+import { DISPATCH_LABELS_EN } from "../../domain/dispatch";
+import { DISPATCH_PAGE_LINES_EN } from "../../features/dispatch/CoverGapsPage";
 import { COVER_LINES_EN, MOSQUE_LINES_EN, STATE_LINES_EN } from "../../features/cover/Cover";
 import { AIRPORT_NAMES_EN, TERMINAL_NAMES_EN } from "../../domain/airports";
 import { INCIDENT_LABELS_EN } from "../../domain/incidents";
@@ -41,7 +43,7 @@ describe("Arabic", () => {
     for (const en of [...HEALTH_LABELS_EN, ...Object.values(HEALTH_SHOW_EN), "Health"]) if (!(en in AR)) missing.add(en);
     /* the AI helpers: tones, resource kinds, and the screens the Ask bar can open */
     for (const en of [...BRIEF_LABELS_EN, ...ADVISOR_LABELS_EN, "Resources", "Screen", "Flight"]) if (!(en in AR)) missing.add(en);
-    for (const en of [...BOOKING_LABELS_EN, ...Object.values(EVENT), ...ROOM_LINES, ...COVER_LINES_EN, ...MOSQUE_LINES_EN, ...STATE_LINES_EN, "Bookings", "Madinah", "Makkah"]) if (!(en in AR)) missing.add(en);
+    for (const en of [...BOOKING_LABELS_EN, ...Object.values(EVENT), ...ROOM_LINES, ...DISPATCH_LABELS_EN, ...DISPATCH_PAGE_LINES_EN, ...COVER_LINES_EN, ...MOSQUE_LINES_EN, ...STATE_LINES_EN, "Bookings", "Madinah", "Makkah"]) if (!(en in AR)) missing.add(en);
     expect([...missing]).toEqual([]);
   });
 });

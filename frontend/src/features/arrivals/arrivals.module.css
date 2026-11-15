@@ -409,3 +409,11 @@
 .whatIf button {
   margin-inline-start: auto;
 }
+
+/* covered on paper, but the people asked have not said yes yet */
+.waitNote {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b26f00;
+}
