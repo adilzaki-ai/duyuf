@@ -101,6 +101,20 @@ database and ports. Never touch Sky Logics from here.
   Lists in `bookings/flow.py` ↔ `rafeeq/rooms.ts` (test reads the Python). The
   platform refuses a room type the hotel lacks and rooms that sleep fewer than
   the party; a pilgrim may ask for any accessibility need (staff check).
+- Dispatcher (0019, `dispatch/`, `routers/dispatch.py`): a roster (`worker`)
+  covers board gaps. Rule in `dispatch/planner.py` ↔ `domain/dispatch.ts`; both
+  run `sample/dispatch_cases.json`. Modes Off / Approve (one proposed plan) /
+  Automatic, per operator (`dispatch_setting`); `core/jobs.py` runs a round
+  every minute (expire, plan or ask, clear links of ended shifts). A roster
+  shift counts on the board by people holding it (asked/accepted/arrived);
+  `waiting` = asked but not yet yes. Each request has a personal link
+  `/w#wk_…` (WorkerLink in core/auth.py; token kept until the shift ends) to
+  accept/decline/"I'm here". No SMS/WhatsApp provider: staff tap "Send on
+  WhatsApp" (sent_at). AI explains a plan (prompts.DISPATCH, roles and counts
+  only). Scopes roster:read/write, dispatch:approve.
+- The Desktop is iCloud-synced: it can create "name 2.ext" copies. A copied
+  migration breaks run-tests.sh ("already exists"). Before committing, look for
+  `find . -name "* 2.*"` outside node_modules/.venv and delete exact copies.
 - AI analyst (`analyst/`): aggregates only, agreed with Adil. Its tools never
   return names, passports, birth dates, phones or incident descriptions;
   `test_no_tool_lets_a_person_out` enforces it. Key in `backend/.env.local`.

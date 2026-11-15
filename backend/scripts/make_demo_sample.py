@@ -320,6 +320,28 @@ def venues() -> list[dict]:
     return out
 
 
+# The roster: invented people who can cover shifts. Name, Arabic name, roles, languages they interpret, airports.
+# No Hausa speaker on purpose: the demo shows a gap nobody on the roster can cover. Phones are invented
+# (+966 50 0000 1NN); the demo never opens them.
+WORKERS = [
+    ("Amina Raza", "أمينة رضا", ["interpreter"], ["ur", "en"], ["JED"]),
+    ("Bilal Qureshi", "بلال قريشي", ["interpreter"], ["ur"], ["JED"]),
+    ("Sana Iqbal", "سناء إقبال", ["interpreter"], ["ur", "en"], ["JED", "MED"]),
+    ("Siti Rahma", "سيتي رحمة", ["interpreter"], ["id", "ms"], ["MED"]),
+    ("Dewi Lestari", "ديوي ليستاري", ["interpreter"], ["id"], ["MED", "JED"]),
+    ("Emre Yildiz", "أمره يلدز", ["interpreter"], ["tr", "en"], ["MED"]),
+    ("Karim Mansour", "كريم منصور", ["wheelchair"], [], ["JED"]),
+    ("Dalia Saleh", "داليا صالح", ["wheelchair"], [], ["JED"]),
+    ("Faisal Otaibi", "فيصل العتيبي", ["wheelchair"], [], ["JED"]),
+    ("Yusuf Kareem", "يوسف كريم", ["wheelchair"], [], ["MED"]),
+    ("Khalid Harbi", "خالد الحربي", ["wheelchair"], [], ["MED"]),
+    ("Fatimah Zahrani", "فاطمة الزهراني", ["wheelchair"], [], ["MED"]),
+    ("Omar Faruk", "عمر فاروق", ["wheelchair", "bus"], [], ["MED"]),
+    ("Hamid Ali", "حامد علي", ["bus"], [], ["JED"]),
+    ("Nasser Qahtani", "ناصر القحطاني", ["bus"], [], ["MED", "JED"]),
+]
+
+
 def main() -> None:
     rng = random.Random(1448)
     groups, pilgrims, seen = [], [], set()
@@ -389,6 +411,8 @@ def main() -> None:
         "return_legs": {code: [dict(zip(("flight_number", "from_airport", "to_airport", "time", "minutes"), leg))
                                for leg in legs] for code, legs in RETURN_LEGS.items()},
         "venues": venues(),
+        "workers": [{"name": n, "name_ar": a, "phone": f"+966 50 0000 1{i:02d}", "roles": r, "languages": l,
+                     "airports": ap} for i, (n, a, r, l, ap) in enumerate(WORKERS)],
         "bookings": [{**dict(zip(("group_code", "pilgrim_index", "venue", "days_ahead", "time", "nights", "people",
                                   "status", "amount", "note"), b)), **BOOKING_ROOMS.get(i, {})}
                      for i, b in enumerate(BOOKINGS)],

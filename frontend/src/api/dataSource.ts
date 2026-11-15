@@ -45,6 +45,7 @@ import type {
   VenueChange,
 } from "../domain/types";
 import type { StaffAction } from "../domain/bookings";
+import type { DispatchNote, DispatchSettings, DispatchView, NewWorker, Worker, WorkerChange } from "../domain/types";
 import type { RafeeqLang } from "../rafeeq/help";
 
 /**
@@ -131,6 +132,22 @@ export interface DataSource {
   booking(id: string): Promise<StaffBooking>;
   /** Confirm (pay at the place), ask for payment online, decline, or cancel; the note is shown to the pilgrim. */
   decideBooking(id: string, action: StaffAction, amount?: number | null, note?: string | null): Promise<StaffBooking>;
+  /** The roster: people who can cover shifts. */
+  workers(): Promise<Worker[]>;
+  addWorker(w: NewWorker): Promise<Worker>;
+  updateWorker(id: string, change: WorkerChange): Promise<Worker>;
+  /** The dispatcher's setting, the plan waiting for approval, and the requests out. */
+  dispatch(): Promise<DispatchView>;
+  setDispatchSettings(s: Pick<DispatchSettings, "mode" | "horizon_hours" | "answer_minutes">): Promise<DispatchView>;
+  /** Look at the board now: Automatic asks at once; otherwise a plan waits for approval. */
+  runDispatch(): Promise<DispatchView>;
+  approvePlan(id: string): Promise<DispatchView & { asked: number }>;
+  discardPlan(id: string): Promise<DispatchView>;
+  /** Staff sent the request themselves (WhatsApp). */
+  markSent(requestId: string): Promise<DispatchView>;
+  cancelRequest(requestId: string): Promise<DispatchView>;
+  /** The plan explained by the AI helper: roles and counts, never names. */
+  aiDispatch(language: "en" | "ar"): Promise<DispatchNote>;
   staff(): Promise<StaffMember[]>;
   addStaff(s: NewStaff): Promise<StaffMember>;
   updateStaff(id: string, change: StaffChange): Promise<StaffMember>;

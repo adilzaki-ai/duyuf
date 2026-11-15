@@ -122,3 +122,15 @@ def test_a_refusal_is_said_plainly(client, demo, monkeypatch):
     _script(monkeypatch, _reply({}, stop="refusal"))
     r = client.post("/v1/ai/brief", headers=DEMO, json={"refresh": True})
     assert r.status_code == 422 and "declined" in r.json()["detail"]
+
+
+def test_the_dispatch_note_sees_roles_and_counts_never_a_name(client, demo, monkeypatch):
+    plan = client.post("/v1/dispatch/run", headers=DEMO).json()["plan"]
+    assert plan and any(i["missing"] for i in plan["items"])          # nobody speaks Hausa on the demo roster
+    s = _script(monkeypatch, _reply({"summary": "Approving asks 6 people; one Hausa gap needs an agency.",
+                                     "items": [{"gap": 1, "note": "Add a Hausa speaker."}, {"gap": 99, "note": "x"}]}))
+    r = client.post("/v1/ai/dispatch", headers=DEMO, json={"language": "en"})
+    assert r.status_code == 200, r.text
+    assert [i["gap"] for i in r.json()["items"]] == [1]               # a gap that does not exist is dropped
+    said = s.sent[0]["messages"][0]["content"]
+    assert "nobody_on_the_roster" in said and "Amina" not in said and "+966" not in said

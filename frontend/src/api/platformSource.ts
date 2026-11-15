@@ -45,6 +45,7 @@ import type {
   VenueChange,
 } from "../domain/types";
 import type { StaffAction } from "../domain/bookings";
+import type { DispatchNote, DispatchSettings, DispatchView, NewWorker, Worker, WorkerChange } from "../domain/types";
 import type { RafeeqLang } from "../rafeeq/help";
 import type { DataSource } from "./dataSource";
 import { HttpClient, type HttpOptions } from "./http";
@@ -287,5 +288,49 @@ export class PlatformSource implements DataSource {
 
   decideBooking(id: string, action: StaffAction, amount?: number | null, note?: string | null) {
     return this.http.post<StaffBooking>(`/v1/bookings/${encodeURIComponent(id)}/decide`, { action, amount: amount ?? null, note: note || null });
+  }
+
+  async workers() {
+    return (await this.http.get<{ workers: Worker[] }>("/v1/workers")).workers;
+  }
+
+  addWorker(w: NewWorker) {
+    return this.http.post<Worker>("/v1/workers", w);
+  }
+
+  updateWorker(id: string, change: WorkerChange) {
+    return this.http.patch<Worker>(`/v1/workers/${encodeURIComponent(id)}`, change);
+  }
+
+  dispatch() {
+    return this.http.get<DispatchView>("/v1/dispatch");
+  }
+
+  setDispatchSettings(x: Pick<DispatchSettings, "mode" | "horizon_hours" | "answer_minutes">) {
+    return this.http.put<DispatchView>("/v1/dispatch/settings", x);
+  }
+
+  runDispatch() {
+    return this.http.post<DispatchView>("/v1/dispatch/run");
+  }
+
+  approvePlan(id: string) {
+    return this.http.post<DispatchView & { asked: number }>(`/v1/dispatch/plans/${encodeURIComponent(id)}/approve`);
+  }
+
+  discardPlan(id: string) {
+    return this.http.post<DispatchView>(`/v1/dispatch/plans/${encodeURIComponent(id)}/discard`);
+  }
+
+  markSent(requestId: string) {
+    return this.http.post<DispatchView>(`/v1/dispatch/requests/${encodeURIComponent(requestId)}/sent`);
+  }
+
+  cancelRequest(requestId: string) {
+    return this.http.post<DispatchView>(`/v1/dispatch/requests/${encodeURIComponent(requestId)}/cancel`);
+  }
+
+  aiDispatch(language: "en" | "ar") {
+    return this.http.post<DispatchNote>("/v1/ai/dispatch", { language }, 90_000);
   }
 }

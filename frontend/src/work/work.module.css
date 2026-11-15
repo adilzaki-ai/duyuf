@@ -1,0 +1,160 @@
+.page {
+  min-height: 100vh;
+  max-width: 520px;
+  margin: 0 auto;
+  background: #f1f9f8;
+  color: #10292c;
+  font-size: 17px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #17b3b9, #075f69);
+  color: #fff;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lang {
+  font: inherit;
+  font-size: 15px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 0;
+  background: rgb(255 255 255 / 0.92);
+  color: #10292c;
+  cursor: pointer;
+}
+
+.main {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.banner {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fbe9c7;
+  font-size: 14px;
+}
+
+.hello {
+  margin: 0;
+  font-size: 24px;
+}
+
+.lead {
+  font-size: 19px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(7 95 105 / 0.06), 0 6px 18px rgb(7 95 105 / 0.08);
+}
+
+.ask {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 0;
+}
+
+.facts dt {
+  color: #4c6467;
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.status {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff3cd;
+  font-weight: 600;
+}
+
+.st_accepted,
+.st_arrived {
+  background: #e1f5e6;
+  color: #1b5e20;
+}
+
+.st_declined,
+.st_expired,
+.st_cancelled {
+  background: #eceff1;
+  color: #455a64;
+}
+
+.quiet {
+  margin: 0;
+  color: #4c6467;
+  font-size: 15px;
+}
+
+.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.big {
+  min-height: 60px;
+  border: 0;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 19px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.big:disabled {
+  opacity: 0.6;
+}
+
+.yes {
+  background: #0a7f8a;
+  color: #fff;
+}
+
+.no {
+  background: #eceff1;
+  color: #263238;
+}
+
+.here {
+  background: #2e7d32;
+  color: #fff;
+}
+
+.err {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fdecea;
+  color: #8e1b14;
+}

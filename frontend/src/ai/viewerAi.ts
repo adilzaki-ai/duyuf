@@ -10,7 +10,7 @@ import { DataSourceError } from "../api/dataSource";
  */
 
 /** One of the instructions in prompts.py, as the server sends it. */
-export function instruction(name: "BRIEF" | "COPILOT" | "ADVISOR"): string {
+export function instruction(name: "BRIEF" | "COPILOT" | "ADVISOR" | "DISPATCH"): string {
   const start = promptsPy.indexOf(`${name} = """`);
   if (start < 0) throw new Error(`no ${name} in prompts.py`);
   const from = start + `${name} = """`.length;
@@ -25,6 +25,7 @@ export const SHAPES = {
     '{"summary": string, "priority_ok": boolean, "suggested_priority": "urgent"|"high"|"normal", "team": string, "next_step": string, "message_to_leader": {"language": string, "text": string, "english": string}, "message_to_pilgrim": {"language": string, "text": string, "english": string}}',
   ADVISOR:
     '{"summary": string, "items": [{"gap": number, "explain": string, "fix": string, "extra": null | {"airport": string, "kind": "wheelchair"|"bus"|"interpreter", "language": string|null, "quantity": number}}]}',
+  DISPATCH: '{"summary": string, "items": [{"gap": number, "note": string}]}',
 } as const;
 
 interface SampleFn {

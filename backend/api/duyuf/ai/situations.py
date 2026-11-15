@@ -115,3 +115,21 @@ def copilot(conn, incident_id: str, who) -> dict:
             h = record.state(conn, i["pilgrim_id"])
             out["pilgrim"]["health_now"] = {"overall": h["level"], "reasons": h["reasons"]}
     return out
+
+
+def dispatch(conn) -> dict:
+    """The proposed plan and the requests out, as roles and counts: no names, no phones."""
+    plan = conn.execute("SELECT items FROM dispatch_plan WHERE status = 'proposed'").fetchone()
+    gaps = []
+    for n, i in enumerate((plan or {}).get("items") or [], start=1):
+        gaps.append({"gap": n, "airport": i["airport"], "what": i["kind"], "language": i["language"],
+                     "from": _when(datetime.fromisoformat(i["start"])), "short": i["short"],
+                     "will_ask": len(i["ask"]), "nobody_on_the_roster": i["missing"],
+                     "replacing_someone_who_said_no": bool(i.get("shift_id"))})
+    out = conn.execute(
+        """SELECT s.airport, s.kind AS what, s.language, a.status, count(*)::int AS people,
+                  min(s.starts_at) AS first_start
+             FROM assignment a JOIN resource_shift s ON s.id = a.shift_id
+            WHERE s.ends_at > now() GROUP BY 1, 2, 3, 4 ORDER BY 6""").fetchall()
+    return {"saudi_time": datetime.now(KSA).strftime("%A %H:%M"), "gaps": gaps,
+            "requests_out": [{**r, "first_start": _when(r["first_start"])} for r in out]}

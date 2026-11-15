@@ -38,6 +38,8 @@ from .db import owner_session
 KEY_PREFIX = "dyf_"
 SESSION_PREFIX = "dys_"
 CARD_PREFIX = "rfq_"
+# a personal link asking one person to cover one shift (dispatch/run.py makes them)
+WORK_PREFIX = "wk_"
 SESSION_COOKIE = "duyuf_session"
 CLIENT_HEADER = "x-duyuf-client"
 SESSION_HOURS = float(os.environ.get("DUYUF_SESSION_HOURS", "12") or 12)
@@ -60,19 +62,22 @@ LOCKOUT_WINDOW = timedelta(minutes=15)
 # with a key; give such a key to an administrator account kept for it.
 # Anyone working with pilgrims answers their booking requests; the list of
 # places (and their ratings) is kept by supervisors and administrators.
+# The roster holds people's phone numbers: staff read it to send requests;
+# supervisors and administrators keep it, and approve or switch the dispatcher.
 ROLE_SCOPES: dict[str, frozenset[str]] = {
     "administrator": frozenset({"group:read", "group:write", "pilgrim:read", "pilgrim:write",
                                 "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write",
                                 "incident:read", "incident:write", "analyst:ask", "staff:manage",
                                 "rafeeq:issue", "health:read", "device:write", "booking:read", "booking:write",
-                                "venue:write"}),
+                                "venue:write", "roster:read", "roster:write", "dispatch:approve"}),
     "supervisor": frozenset({"group:read", "group:write", "pilgrim:read", "pilgrim:write",
                              "pilgrim:status", "pilgrim:identity", "flight:read", "flight:write",
                              "incident:read", "incident:write", "analyst:ask", "rafeeq:issue",
-                             "booking:read", "booking:write", "venue:write"}),
+                             "booking:read", "booking:write", "venue:write", "roster:read", "roster:write",
+                             "dispatch:approve"}),
     "staff": frozenset({"group:read", "pilgrim:read", "pilgrim:status", "flight:read",
                         "incident:read", "incident:write", "analyst:ask", "rafeeq:issue",
-                        "booking:read", "booking:write"}),
+                        "booking:read", "booking:write", "roster:read"}),
     "viewer": frozenset({"group:read", "pilgrim:read", "flight:read", "incident:read", "analyst:ask",
                          "booking:read"}),
     "medic": frozenset({"group:read", "pilgrim:read", "flight:read", "incident:read", "incident:write",
@@ -275,6 +280,30 @@ def card_holder(request: Request) -> CardHolder:
     if row is None:
         raise HTTPException(401, "this card no longer works; ask your group leader for a new one")
     return CardHolder(**row)
+
+
+@dataclass(frozen=True)
+class WorkerLink:
+    """A person holding the link to one request: they see it, answer it, and say they are there. Nothing else."""
+    tenant_id: str
+    assignment_id: str
+    worker_id: str
+    is_demo: bool
+
+
+def worker_link(request: Request) -> WorkerLink:
+    auth = request.headers.get("authorization", "")
+    token = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+    if not token.startswith(WORK_PREFIX):
+        raise HTTPException(401, "open the link you were sent")
+    with owner_session() as conn:
+        row = conn.execute(
+            """SELECT a.id::text AS assignment_id, a.tenant_id::text, a.worker_id::text, t.is_demo
+                 FROM assignment a JOIN tenant t ON t.id = a.tenant_id
+                WHERE a.token_hash = %s AND a.token IS NOT NULL""", (hash_key(token),)).fetchone()
+    if row is None:
+        raise HTTPException(401, "this link no longer works")
+    return WorkerLink(**row)
 
 
 # ---- signing in and out ----

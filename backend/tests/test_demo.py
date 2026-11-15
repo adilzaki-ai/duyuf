@@ -54,3 +54,14 @@ def test_the_sample_flights_fit_their_groups():
         assert f["day"] == groups[p["group_code"]]["arrive_in_days"], p["full_name"]
         assert p["status"] in ("registered", "visa_issued"), p["full_name"]
     assert all(p["language"] for p in data["pilgrims"])
+
+
+def test_reloading_the_demo_does_not_double_its_places_or_roster():
+    from seed_demo import seed
+    from duyuf.core.db import owner_session
+    seed(reset=True)
+    seed(reset=True)
+    with owner_session() as conn:
+        n = conn.execute("""SELECT (SELECT count(*) FROM venue v JOIN tenant t ON t.id = v.tenant_id WHERE t.slug = 'duyuf-demo')::int AS v,
+                                   (SELECT count(*) FROM worker w JOIN tenant t ON t.id = w.tenant_id WHERE t.slug = 'duyuf-demo')::int AS w""").fetchone()
+    assert n["v"] == 39 and n["w"] == 15

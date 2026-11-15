@@ -3,7 +3,8 @@ import { cleanGate, cleanTerminal, GATE_PATTERN } from "../domain/airports";
 import { brief, flightState, landingDay, normalFlightNumber, waves } from "../domain/brief";
 import { checkRow, IMPORT_COLUMNS } from "../domain/importRow";
 import { allowedActions, incidentRefusal, type IncidentAction, type IncidentKind, type Priority } from "../domain/incidents";
-import { blockOf, load } from "../domain/plan";
+import { blockOf, load, onShift, shortOf } from "../domain/plan";
+import { CONFIRMED, HOLDING, plan as dispatchPlan, type PlanGap, type Role } from "../domain/dispatch";
 import { MOVES, refusal, STATUSES, type Status } from "../domain/journey";
 import type {
   AiAdvice,
@@ -59,6 +60,15 @@ import type {
   NewVenue,
   ReturnLeg,
   StaffBooking,
+  DispatchNote,
+  DispatchPlan,
+  DispatchPlanItem,
+  DispatchRequest,
+  DispatchSettings,
+  DispatchView,
+  NewWorker,
+  Worker,
+  WorkerChange,
   Venue,
   VenueChange,
 } from "../domain/types";
@@ -139,6 +149,9 @@ const ALL_SCOPES: Scope[] = [
   "booking:read",
   "booking:write",
   "venue:write",
+  "roster:read",
+  "roster:write",
+  "dispatch:approve",
 ];
 
 /** A day offset and an hour as an instant, read on the Saudi clock (UTC+3, no daylight saving). */
@@ -217,6 +230,7 @@ export class MockSource implements DataSource {
         note: null,
         created_by: "Demo load",
         created_at: at(this.today, -20, 0),
+        source: "manual",
       });
     });
     const flightId = new Map<string, string>();
@@ -482,7 +496,7 @@ export class MockSource implements DataSource {
   }
 
   /** The platform's board: with delays and extra resources it is a what-if, and nothing is kept. */
-  private board(hours: number, delays: Record<string, number>, extra: WhatIf["extra"]): Arrivals {
+  private board(hours: number, delays: Record<string, number>, extra: WhatIf["extra"], rosterAsPlanned = false): Arrivals {
     const now = this.clock();
     const t = now.getTime();
     const until = t + hours * HOUR;
@@ -511,11 +525,31 @@ export class MockSource implements DataSource {
     }
     unplanned.sort((a, b) => a.arrival_date.localeCompare(b.arrival_date) || a.code.localeCompare(b.code));
     const far = (d: number) => ksaIso(new Date(t + d * 3650 * 24 * HOUR));
-    const shifts = [
-      ...this.shiftsById.values(),
-      ...extra.map((x) => ({ ...x, starts_at: far(-1), ends_at: far(1) })),
-    ];
-    const rows = load(flights, shifts, now, hours);
+    const extras = extra.map((x) => ({ ...x, starts_at: far(-1), ends_at: far(1) }));
+    /* a roster shift counts the people still holding it; only those who said yes are confirmed */
+    const counted: Shift[] = [];
+    const sure: Shift[] = [];
+    for (const sh of this.shiftsById.values()) {
+      if (sh.source !== "roster") {
+        counted.push(sh);
+        sure.push(sh);
+        continue;
+      }
+      const mine = this.dsp().requests.filter((a) => a.shift_id === sh.id);
+      const holding = Math.min(sh.quantity, mine.filter((a) => HOLDING.includes(a.status)).length);
+      const confirmed = Math.min(sh.quantity, mine.filter((a) => CONFIRMED.includes(a.status)).length);
+      counted.push({ ...sh, quantity: rosterAsPlanned ? sh.quantity : holding });
+      sure.push({ ...sh, quantity: confirmed });
+    }
+    const rows = load(flights, [...counted, ...extras], now, hours);
+    for (const r of rows) {
+      const st = Date.parse(r.start);
+      const sureShort = shortOf(r.need, onShift([...sure, ...extras], r.airport, st, st + 3 * HOUR));
+      const gap = new Map(r.short.map((x) => [`${x.kind}|${x.language}`, x.short]));
+      r.waiting = sureShort
+        .map((x) => ({ ...x, short: x.short - (gap.get(`${x.kind}|${x.language}`) ?? 0) }))
+        .filter((x) => x.short > 0);
+    }
     const gapAt = new Set(rows.filter((r) => r.short.length).map((r) => `${Date.parse(r.start)}|${r.airport}`));
     const first = blockOf(t, now);
     const marked = flights.map((f) => {
@@ -1318,6 +1352,251 @@ export class MockSource implements DataSource {
     return { ...b, history: [...b.history] };
   }
 
+  /* ---- the roster and the dispatcher: people answer by themselves a few seconds after they are asked ---- */
+
+  private dispatchState: {
+    settings: DispatchSettings;
+    workers: Worker[];
+    requests: DispatchRequest[];
+    plan: DispatchPlan | null;
+    n: number;
+    declinedOnce: boolean;
+  } | null = null;
+
+  private static readonly ANSWER_MS = 6_000;
+  /* the sample's story: she says no the first time, and the dispatcher finds someone else */
+  private static readonly SAYS_NO = "Fatimah Zahrani";
+
+  private dsp() {
+    if (this.dispatchState) return this.dispatchState;
+    this.dispatchState = {
+      settings: { mode: "approve", horizon_hours: 72, answer_minutes: 30, updated_by: "Demo load", updated_at: this.now() },
+      workers: sample.workers.map((w, i) => ({
+        ...w,
+        id: `w-${i}`,
+        roles: w.roles as Role[],
+        max_hours_week: 48,
+        active: true,
+        note: null,
+        holding: 0,
+      })),
+      requests: [],
+      plan: null,
+      n: 0,
+      declinedOnce: false,
+    };
+    return this.dispatchState;
+  }
+
+  private dispatchView(): DispatchView {
+    const st = this.dsp();
+    const now = this.clock().getTime();
+    /* answers arrive by themselves in the sample; requests past their time expire */
+    for (const r of st.requests) {
+      if (r.status !== "asked") continue;
+      if (Date.parse(r.answer_by) <= now) {
+        r.status = "expired";
+        r.answered_at = this.now();
+      } else if (now - Date.parse(r.asked_at) >= MockSource.ANSWER_MS) {
+        const no = r.name === MockSource.SAYS_NO && !st.declinedOnce;
+        if (no) st.declinedOnce = true;
+        r.status = no ? "declined" : "accepted";
+        r.answered_at = this.now();
+      }
+    }
+    for (const w of st.workers) w.holding = st.requests.filter((r) => r.worker_id === w.id && HOLDING.includes(r.status)).length;
+    return {
+      settings: { ...st.settings },
+      plan: st.plan && { ...st.plan, items: st.plan.items.map((i) => ({ ...i })) },
+      requests: [...st.requests].sort((a, b) => a.starts_at.localeCompare(b.starts_at) || a.asked_at.localeCompare(b.asked_at)).map((r) => ({ ...r })),
+      provider: null,
+    };
+  }
+
+  /** The plan, as the platform makes it: lost people on roster shifts, then the board's gaps within the horizon. */
+  private dispatchItems(): DispatchPlanItem[] {
+    const st = this.dsp();
+    this.dispatchView();
+    const now = this.clock().getTime();
+    const board = this.board(st.settings.horizon_hours, {}, [], true);
+    const gaps: PlanGap[] = [];
+    for (const sh of this.shiftsById.values()) {
+      if (sh.source !== "roster" || Date.parse(sh.starts_at) <= now) continue;
+      const mine = st.requests.filter((r) => r.shift_id === sh.id);
+      const holding = mine.filter((r) => HOLDING.includes(r.status)).length;
+      if (sh.quantity > holding)
+        gaps.push({ shift_id: sh.id, airport: sh.airport, kind: sh.kind, language: sh.language, start: sh.starts_at, end: sh.ends_at, short: sh.quantity - holding, exclude: mine.map((r) => r.worker_id) });
+    }
+    for (const row of board.load)
+      for (const x of row.short)
+        gaps.push({ airport: row.airport, kind: x.kind, language: x.language, start: row.start, end: ksaIso(new Date(Date.parse(row.start) + 3 * HOUR)), short: x.short });
+    const busy: Record<string, [string, string][]> = {};
+    const hours: Record<string, number> = {};
+    for (const r of st.requests.filter((x) => HOLDING.includes(x.status))) {
+      (busy[r.worker_id] ??= []).push([r.starts_at, r.ends_at]);
+      hours[r.worker_id] = (hours[r.worker_id] ?? 0) + (Date.parse(r.ends_at) - Date.parse(r.starts_at)) / HOUR;
+    }
+    const names = new Map(st.workers.map((w) => [w.id, w.name]));
+    return dispatchPlan(gaps, st.workers, busy, hours)
+      .filter((i) => i.ask.length || i.missing)
+      .map((i) => ({ ...i, shift_id: i.shift_id ?? null, people: i.ask.map((id) => ({ id, name: names.get(id)! })) }));
+  }
+
+  private carryOut(items: DispatchPlanItem[], by: string): number {
+    const st = this.dsp();
+    const now = this.clock().getTime();
+    let asked = 0;
+    for (const i of items) {
+      if (!i.ask.length) continue;
+      let shiftId = i.shift_id;
+      if (!shiftId) {
+        shiftId = `s-roster-${this.shiftsById.size + 1}`;
+        this.shiftsById.set(shiftId, {
+          id: shiftId,
+          airport: i.airport,
+          kind: i.kind,
+          language: i.language,
+          quantity: i.short,
+          starts_at: i.start,
+          ends_at: i.end,
+          note: "From the roster",
+          created_by: by,
+          created_at: this.now(),
+          source: "roster",
+        });
+      }
+      const answerBy = Math.max(Math.min(now + st.settings.answer_minutes * 60_000, Date.parse(i.start) - HOUR), now + 5 * 60_000);
+      for (const wid of i.ask) {
+        const w = st.workers.find((x) => x.id === wid)!;
+        if (st.requests.some((r) => r.shift_id === shiftId && r.worker_id === wid)) continue;
+        const link = `#wk_sample.${workPayload({ o: sample.operator.name, oa: sample.operator.name_ar, n: w.name.split(" ")[0], na: (w.name_ar ?? "").split(" ")[0], k: i.kind, l: i.language, a: i.airport, s: i.start, e: i.end })}`;
+        st.requests.push({
+          id: `r-${++st.n}`,
+          status: "asked",
+          message: requestMessage(sample.operator.name, i.kind, i.language, i.airport, i.start, i.end, `(link)`),
+          asked_by: by,
+          asked_at: this.now(),
+          answer_by: ksaIso(new Date(answerBy)),
+          sent_at: null,
+          answered_at: null,
+          arrived_at: null,
+          worker_id: wid,
+          name: w.name,
+          name_ar: w.name_ar,
+          phone: w.phone,
+          shift_id: shiftId,
+          airport: i.airport,
+          kind: i.kind,
+          language: i.language,
+          starts_at: i.start,
+          ends_at: i.end,
+          link,
+        });
+        asked++;
+      }
+    }
+    return asked;
+  }
+
+  async workers(): Promise<Worker[]> {
+    this.dispatchView();
+    return this.dsp().workers.map((w) => ({ ...w })).sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name));
+  }
+
+  async addWorker(w: NewWorker): Promise<Worker> {
+    const st = this.dsp();
+    if (st.workers.some((x) => x.phone.replace(/\s/g, "") === w.phone.replace(/\s/g, "")))
+      throw new DataSourceError("already exists: someone on the roster has this phone", { status: 409 });
+    const made: Worker = { ...w, id: `w-new-${st.workers.length}`, holding: 0 };
+    st.workers.push(made);
+    return { ...made };
+  }
+
+  async updateWorker(id: string, change: WorkerChange): Promise<Worker> {
+    const w = this.dsp().workers.find((x) => x.id === id);
+    if (!w) throw new DataSourceError("no such person", { status: 404 });
+    Object.assign(w, change);
+    return { ...w };
+  }
+
+  async dispatch(): Promise<DispatchView> {
+    return this.dispatchView();
+  }
+
+  async setDispatchSettings(x: Pick<DispatchSettings, "mode" | "horizon_hours" | "answer_minutes">): Promise<DispatchView> {
+    const st = this.dsp();
+    st.settings = { ...x, updated_by: ACTOR, updated_at: this.now() };
+    if (x.mode === "off") st.plan = null;
+    return this.dispatchView();
+  }
+
+  async runDispatch(): Promise<DispatchView> {
+    const st = this.dsp();
+    const items = this.dispatchItems();
+    if (st.settings.mode === "auto") {
+      this.carryOut(items, ACTOR);
+      st.plan = null;
+    } else st.plan = items.length ? { id: `plan-${++st.n}`, items, made_by: ACTOR, made_at: this.now() } : null;
+    return this.dispatchView();
+  }
+
+  async approvePlan(id: string): Promise<DispatchView & { asked: number }> {
+    const st = this.dsp();
+    if (!st.plan || st.plan.id !== id) throw new DataSourceError("this plan is no longer waiting; look again", { status: 409 });
+    const asked = this.carryOut(st.plan.items, ACTOR);
+    st.plan = null;
+    return { ...this.dispatchView(), asked };
+  }
+
+  async discardPlan(id: string): Promise<DispatchView> {
+    const st = this.dsp();
+    if (!st.plan || st.plan.id !== id) throw new DataSourceError("this plan is no longer waiting; look again", { status: 409 });
+    st.plan = null;
+    return this.dispatchView();
+  }
+
+  async markSent(requestId: string): Promise<DispatchView> {
+    const r = this.dsp().requests.find((x) => x.id === requestId);
+    if (!r) throw new DataSourceError("no such request", { status: 404 });
+    r.sent_at ??= this.now();
+    return this.dispatchView();
+  }
+
+  async cancelRequest(requestId: string): Promise<DispatchView> {
+    const r = this.dsp().requests.find((x) => x.id === requestId);
+    if (!r || !["asked", "accepted"].includes(r.status)) throw new DataSourceError("this request is already answered or over", { status: 409 });
+    r.status = "cancelled";
+    r.answered_at = this.now();
+    return this.dispatchView();
+  }
+
+  /** The plan explained by Claude through the viewer, with the server's own instructions; roles and counts only. */
+  async aiDispatch(language: "en" | "ar"): Promise<DispatchNote> {
+    const v = this.dispatchView();
+    if (!v.plan) return { summary: null, items: [], model: null };
+    const situation = {
+      gaps: v.plan.items.map((i, n) => ({
+        gap: n + 1,
+        airport: i.airport,
+        what: i.kind,
+        language: i.language,
+        from: i.start,
+        short: i.short,
+        will_ask: i.ask.length,
+        nobody_on_the_roster: i.missing,
+        replacing_someone_who_said_no: !!i.shift_id,
+      })),
+      requests_out: v.requests.map((r) => ({ airport: r.airport, what: r.kind, language: r.language, status: r.status })),
+    };
+    const out = await askViewer<{ summary: string; items: { gap: number; note: string }[] }>(
+      "DISPATCH",
+      language,
+      situation,
+      "Explain this plan to the supervisor who will approve it.",
+    );
+    return { summary: out.summary ?? null, items: (out.items ?? []).filter((x) => x.gap >= 1 && x.gap <= situation.gaps.length), model: "Claude (in the viewer)" };
+  }
+
   async staff(): Promise<StaffMember[]> {
     return [...this.staffById.values()].sort(
       (a, b) => Number(a.disabled) - Number(b.disabled) || a.role.localeCompare(b.role) || a.display_name.localeCompare(b.display_name),
@@ -1359,4 +1638,31 @@ export class MockSource implements DataSource {
     this.staffById.set(id, next);
     return next;
   }
+}
+
+/** The request as the person reads it, in English and Arabic, as the platform writes it (dispatch/run.py). */
+const ROLE_EN: Record<Role, string> = { interpreter: "interpreter", wheelchair: "wheelchair helper", bus: "bus driver" };
+const ROLE_AR: Record<Role, string> = { interpreter: "مترجم", wheelchair: "مساعد كراسي متحركة", bus: "سائق حافلة" };
+const AIRPORT_EN: Record<string, string> = { JED: "Jeddah airport", MED: "Madinah airport" };
+const AIRPORT_AR: Record<string, string> = { JED: "مطار جدة", MED: "مطار المدينة المنورة" };
+const LANG_EN: Record<string, string> = { ur: "Urdu", id: "Indonesian", tr: "Turkish", ha: "Hausa", en: "English", ms: "Malay", bn: "Bengali", ar: "Arabic" };
+
+function requestMessage(operator: string, kind: Role, language: string | null, airport: string, start: string, end: string, link: string): string {
+  const f = (iso: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-GB", { ...o, timeZone: "Asia/Riyadh" }).format(new Date(iso));
+  const day = f(start, { weekday: "short", day: "2-digit", month: "short" });
+  const from = f(start, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const to = f(end, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const what = ROLE_EN[kind] + (language ? ` (${LANG_EN[language] ?? language})` : "");
+  return (
+    `${operator}: can you work as ${what} at ${AIRPORT_EN[airport] ?? airport}, ${day} ${from}–${to} (Saudi time)? Please answer here: ${link}\n` +
+    `${operator}: هل يمكنك العمل ${ROLE_AR[kind]} في ${AIRPORT_AR[airport] ?? airport}، ${f(start, { day: "2-digit", month: "2-digit" })} من ${from} إلى ${to}؟ أجب هنا: ${link}`
+  );
+}
+
+/** The sample's personal link carries its own request, so the person's page opens with no platform. */
+function workPayload(x: Record<string, string | null>): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(x));
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }

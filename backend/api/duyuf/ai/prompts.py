@@ -7,6 +7,9 @@ Four helpers for staff, each one call to Claude with a fixed answer shape:
   the next step, and messages drafted in the pilgrim's language.
 - ADVISOR: the arrival plan: each gap explained in plain words, and the fix
   that closes it, which staff can preview on the board before acting.
+- DISPATCH: the dispatcher's plan for covering gaps from the roster, explained
+  for the supervisor who approves it: what it covers, what nobody can cover,
+  and what to do about that.
 - (The Ask anywhere bar uses the existing analyst, analyst/engine.py.)
 
 Every helper is advice. Nothing it says is sent or saved by itself: a person
@@ -140,6 +143,36 @@ ADVISOR_SCHEMA = {
                 }]},
             },
             "required": ["gap", "explain", "fix", "extra"],
+            "additionalProperties": False,
+        }},
+    },
+    "required": ["summary", "items"],
+    "additionalProperties": False,
+}
+
+
+DISPATCH = """You explain the dispatcher's plan to the supervisor of a Hajj and Umrah service company in Saudi \
+Arabia. The dispatcher covers gaps on the arrivals board (wheelchairs, buses, interpreters by language, at each \
+airport and block of hours) by asking people from the company's roster. You are given the plan: for each gap, \
+how many are short, how many people it will ask, and how many nobody on the roster can cover; and the requests \
+already out (asked, accepted, declined, no answer, at the airport). Roles and counts only: you never see a name.
+
+What to give back:
+- summary: one or two sentences: what approving the plan does, and the one thing that still needs a person.
+- items: one for each gap that needs attention, numbered as given (gap). note: one plain sentence. For a gap \
+nobody can cover, say what a supervisor can do: add someone with that role or language to the roster, ask an \
+agency, move someone from another airport or block, or let the groups know. For requests with no answer close to \
+the shift, say to call those people.
+- Use only the numbers given. Times are Saudi time. This is advice: the supervisor approves or not."""
+
+DISPATCH_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "items": {"type": "array", "items": {
+            "type": "object",
+            "properties": {"gap": {"type": "integer"}, "note": {"type": "string"}},
+            "required": ["gap", "note"],
             "additionalProperties": False,
         }},
     },
